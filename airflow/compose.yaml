@@ -1,0 +1,76 @@
+x-airflow-common: &airflow-common
+  image: ${AIRFLOW_IMAGE:-docker.io/tgbao/vn-news-airflow:0.1.0}
+  profiles: ["orchestration"]
+  depends_on:
+    airflow-db:
+      condition: service_healthy
+  environment: &airflow-env
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:${AIRFLOW_DB_PASSWORD:-airflow-local}@airflow-db/airflow
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: Asia/Ho_Chi_Minh
+    AIRFLOW__CORE__PARALLELISM: "8"
+    AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: "2"
+    AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
+    AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"
+    VN_NEWS_CONFIG_DIR: /opt/vn-news/configs
+    VN_NEWS_CONFIG_HOST_DIR: ${VN_NEWS_CONFIG_HOST_DIR:-/absolute/path/to/vn-news-config/configs}
+    VN_NEWS_DOCKER_NETWORK: ${VN_NEWS_DOCKER_NETWORK:-vn-news-intelligence_default}
+    VN_NEWS_FEED_INGESTOR_IMAGE: ${VN_NEWS_FEED_INGESTOR_IMAGE:-docker.io/tgbao/vn-news-feed-ingestor:0.1.0}
+    TGB_ENV: ${TGB_ENV:-local}
+  volumes:
+    - ../../vn-news-config/configs:/opt/vn-news/configs:ro
+    - /var/run/docker.sock:/var/run/docker.sock
+
+services:
+  airflow-db:
+    image: ${AIRFLOW_DB_IMAGE:-postgres:16}
+    profiles: ["orchestration"]
+    environment:
+      POSTGRES_DB: airflow
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow-local}
+    volumes:
+      - airflow-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: airflow scheduler
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname \"$$(hostname)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: airflow dag-processor
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type DagProcessorJob --hostname \"$$(hostname)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  airflow-api-server:
+    <<: *airflow-common
+    command: airflow api-server
+    ports:
+      - "8090:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/v2/monitor/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  airflow-db-data:

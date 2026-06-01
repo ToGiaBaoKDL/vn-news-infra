@@ -1,0 +1,20 @@
+services:
+  seaweedfs-s3:
+    image: ${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.29}
+    profiles: ["core"]
+    command: server -s3 -dir=/data
+    ports:
+      - "8333:8333"
+      - "9333:9333"
+      - "8888:8888"
+    volumes:
+      - seaweedfs-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9333/cluster/status >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  seaweedfs-data:

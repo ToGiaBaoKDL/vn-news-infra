@@ -1,0 +1,50 @@
+services:
+  redpanda:
+    image: ${REDPANDA_IMAGE:-redpandadata/redpanda:v26.1.9}
+    profiles: ["core"]
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --schema-registry-addr=0.0.0.0:8081
+    ports:
+      - "19092:19092"
+      - "18081:8081"
+      - "19644:9644"
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster info -X brokers=localhost:9092 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  redpanda-console:
+    image: ${REDPANDA_CONSOLE_IMAGE:-docker.redpanda.com/redpandadata/console:v3.7.3}
+    profiles: ["core"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      CONFIG_FILEPATH: /etc/redpanda-console/config.yaml
+    ports:
+      - "8083:8080"
+    volumes:
+      - ./console.yaml:/etc/redpanda-console/config.yaml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail http://localhost:8080/api/topics >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  redpanda-data:

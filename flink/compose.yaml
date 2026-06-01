@@ -1,0 +1,38 @@
+services:
+  flink-jobmanager:
+    image: ${FLINK_IMAGE:-flink:latest}
+    profiles: ["processing"]
+    command: jobmanager
+    ports:
+      - "8081:8081"
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
+    volumes:
+      - flink-checkpoints:/tmp/flink-checkpoints
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/overview >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  flink-taskmanager:
+    image: ${FLINK_IMAGE:-flink:latest}
+    profiles: ["processing"]
+    command: taskmanager
+    depends_on:
+      flink-jobmanager:
+        condition: service_healthy
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
+    volumes:
+      - flink-checkpoints:/tmp/flink-checkpoints
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep -q '[t]askmanager'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  flink-checkpoints:

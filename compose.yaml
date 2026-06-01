@@ -1,0 +1,14 @@
+name: vn-news-intelligence
+
+include:
+  - redpanda/compose.yaml
+  - seaweedfs/compose.yaml
+  - trino/compose.yaml
+  - polaris/compose.yaml
+  - flink/compose.yaml
+  - spark/compose.yaml
+  - opensearch/compose.yaml
+  - qdrant/compose.yaml
+  - observability/compose.yaml
+  - airflow/compose.yaml
+  - ingestion/compose.yaml
