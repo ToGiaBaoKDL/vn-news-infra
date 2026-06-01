@@ -1,5 +1,5 @@
 x-airflow-common: &airflow-common
-  image: ${AIRFLOW_IMAGE:-docker.io/tgbao/vn-news-airflow:0.1.0}
+  image: ${AIRFLOW_IMAGE:-docker.io/toilachuoituyet/vn-news-airflow:0.1.0}
   profiles: ["orchestration"]
   depends_on:
     airflow-db:
@@ -17,7 +17,7 @@ x-airflow-common: &airflow-common
     VN_NEWS_CONFIG_DIR: /opt/vn-news/configs
     VN_NEWS_CONFIG_HOST_DIR: ${VN_NEWS_CONFIG_HOST_DIR:-/absolute/path/to/vn-news-config/configs}
     VN_NEWS_DOCKER_NETWORK: ${VN_NEWS_DOCKER_NETWORK:-vn-news-intelligence_default}
-    VN_NEWS_FEED_INGESTOR_IMAGE: ${VN_NEWS_FEED_INGESTOR_IMAGE:-docker.io/tgbao/vn-news-feed-ingestor:0.1.0}
+    VN_NEWS_FEED_INGESTOR_IMAGE: ${VN_NEWS_FEED_INGESTOR_IMAGE:-docker.io/toilachuoituyet/vn-news-feed-ingestor:0.1.0}
     TGB_ENV: ${TGB_ENV:-local}
   volumes:
     - ../../vn-news-config/configs:/opt/vn-news/configs:ro

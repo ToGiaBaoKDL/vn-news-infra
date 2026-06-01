@@ -1,6 +1,6 @@
 services:
   article-fetcher:
-    image: ${ARTICLE_FETCHER_IMAGE:-docker.io/tgbao/vn-news-article-fetcher:0.1.0}
+    image: ${ARTICLE_FETCHER_IMAGE:-docker.io/toilachuoituyet/vn-news-article-fetcher:0.1.0}
     profiles: ["ingestion"]
     restart: unless-stopped
     depends_on:
@@ -18,7 +18,7 @@ services:
       start_period: 10s
 
   article-extractor:
-    image: ${ARTICLE_EXTRACTOR_IMAGE:-docker.io/tgbao/vn-news-article-extractor:0.1.0}
+    image: ${ARTICLE_EXTRACTOR_IMAGE:-docker.io/toilachuoituyet/vn-news-article-extractor:0.1.0}
     profiles: ["ingestion"]
     restart: unless-stopped
     depends_on:
