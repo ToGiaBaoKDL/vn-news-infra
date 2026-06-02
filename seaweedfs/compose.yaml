@@ -1,15 +1,13 @@
 services:
   seaweedfs-s3:
     image: ${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.29}
-    command: mini -dir=/data
-    environment:
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY}
+    command: server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
     ports:
       - "${PLATFORM_PRIVATE_IP:?set PLATFORM_PRIVATE_IP}:8333:8333"
       - "${ADMIN_BIND_ADDRESS:-127.0.0.1}:9333:9333"
       - "${ADMIN_BIND_ADDRESS:-127.0.0.1}:8888:8888"
     volumes:
+      - ${SEAWEEDFS_S3_CONFIG_HOST_FILE:?set SEAWEEDFS_S3_CONFIG_HOST_FILE}:/etc/seaweedfs/s3.json:ro
       - seaweedfs-data:/data
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:9333/cluster/status >/dev/null"]
