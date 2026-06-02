@@ -1,36 +1,32 @@
 services:
   article-fetcher:
-    image: ${ARTICLE_FETCHER_IMAGE:-docker.io/toilachuoituyet/vn-news-article-fetcher:0.1.0}
-    profiles: ["ingestion"]
+    image: docker.io/toilachuoituyet/vn-news-article-fetcher:${VN_NEWS_RELEASE_TAG:?set VN_NEWS_RELEASE_TAG}
     restart: unless-stopped
-    depends_on:
-      redpanda:
-        condition: service_healthy
-      seaweedfs-s3:
-        condition: service_healthy
+    environment: &worker-env
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY}
+      VN_NEWS_CONFIG_DIR: /app/configs
+      VN_NEWS_REDPANDA_BOOTSTRAP_SERVERS: ${VN_NEWS_REDPANDA_BOOTSTRAP_SERVERS:?set VN_NEWS_REDPANDA_BOOTSTRAP_SERVERS}
+      VN_NEWS_SCHEMA_REGISTRY_URL: ${VN_NEWS_SCHEMA_REGISTRY_URL:?set VN_NEWS_SCHEMA_REGISTRY_URL}
+      VN_NEWS_STORAGE_ENDPOINT_URL: ${VN_NEWS_STORAGE_ENDPOINT_URL:?set VN_NEWS_STORAGE_ENDPOINT_URL}
     volumes:
-      - ../../vn-news-config/configs:/app/configs:ro
+      - ${VN_NEWS_CONFIG_HOST_DIR:?set VN_NEWS_CONFIG_HOST_DIR}:/app/configs:ro
     healthcheck:
-      test: ["CMD-SHELL", "kill -0 1"]
+      test: ["CMD", "python", "-m", "news_service_common.health"]
       interval: 30s
-      timeout: 5s
+      timeout: 15s
       retries: 3
-      start_period: 10s
+      start_period: 30s
 
   article-extractor:
-    image: ${ARTICLE_EXTRACTOR_IMAGE:-docker.io/toilachuoituyet/vn-news-article-extractor:0.1.0}
-    profiles: ["ingestion"]
+    image: docker.io/toilachuoituyet/vn-news-article-extractor:${VN_NEWS_RELEASE_TAG:?set VN_NEWS_RELEASE_TAG}
     restart: unless-stopped
-    depends_on:
-      redpanda:
-        condition: service_healthy
-      seaweedfs-s3:
-        condition: service_healthy
+    environment: *worker-env
     volumes:
-      - ../../vn-news-config/configs:/app/configs:ro
+      - ${VN_NEWS_CONFIG_HOST_DIR:?set VN_NEWS_CONFIG_HOST_DIR}:/app/configs:ro
     healthcheck:
-      test: ["CMD-SHELL", "kill -0 1"]
+      test: ["CMD", "python", "-m", "news_service_common.health"]
       interval: 30s
-      timeout: 5s
+      timeout: 15s
       retries: 3
-      start_period: 10s
+      start_period: 30s

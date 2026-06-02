@@ -1,7 +1,6 @@
 services:
   redpanda:
     image: ${REDPANDA_IMAGE:-redpandadata/redpanda:v26.1.9}
-    profiles: ["core"]
     command:
       - redpanda
       - start
@@ -12,12 +11,12 @@ services:
       - --node-id=0
       - --check=false
       - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
-      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://${PLATFORM_PRIVATE_IP:?set PLATFORM_PRIVATE_IP}:19092
       - --schema-registry-addr=0.0.0.0:8081
     ports:
-      - "19092:19092"
-      - "18081:8081"
-      - "19644:9644"
+      - "${PLATFORM_PRIVATE_IP:?set PLATFORM_PRIVATE_IP}:19092:19092"
+      - "${PLATFORM_PRIVATE_IP:?set PLATFORM_PRIVATE_IP}:18081:8081"
+      - "${ADMIN_BIND_ADDRESS:-127.0.0.1}:19644:9644"
     volumes:
       - redpanda-data:/var/lib/redpanda/data
     healthcheck:
@@ -29,14 +28,13 @@ services:
 
   redpanda-console:
     image: ${REDPANDA_CONSOLE_IMAGE:-docker.redpanda.com/redpandadata/console:v3.7.3}
-    profiles: ["core"]
     depends_on:
       redpanda:
         condition: service_healthy
     environment:
       CONFIG_FILEPATH: /etc/redpanda-console/config.yaml
     ports:
-      - "8083:8080"
+      - "${ADMIN_BIND_ADDRESS:-127.0.0.1}:8083:8080"
     volumes:
       - ./console.yaml:/etc/redpanda-console/config.yaml:ro
     healthcheck:

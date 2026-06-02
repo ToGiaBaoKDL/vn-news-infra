@@ -17,4 +17,6 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Validate Compose
-        run: docker compose --env-file .env.example --profile "*" config --quiet
+        run: |
+          docker compose --env-file .env.example -f compose.yaml config --quiet
+          docker compose --env-file .env.example -f compose.workers.yaml config --quiet

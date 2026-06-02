@@ -1,12 +1,14 @@
 services:
   seaweedfs-s3:
     image: ${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.29}
-    profiles: ["core"]
-    command: server -s3 -dir=/data
+    command: mini -dir=/data
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY}
     ports:
-      - "8333:8333"
-      - "9333:9333"
-      - "8888:8888"
+      - "${PLATFORM_PRIVATE_IP:?set PLATFORM_PRIVATE_IP}:8333:8333"
+      - "${ADMIN_BIND_ADDRESS:-127.0.0.1}:9333:9333"
+      - "${ADMIN_BIND_ADDRESS:-127.0.0.1}:8888:8888"
     volumes:
       - seaweedfs-data:/data
     healthcheck:
