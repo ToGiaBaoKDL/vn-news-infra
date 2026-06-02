@@ -14,6 +14,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: "2"
     AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
     AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api-server:8080/execution/
     AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_API_AUTH_JWT_SECRET}
     VN_NEWS_CONFIG_DIR: /opt/vn-news/configs
     VN_NEWS_CONFIG_HOST_DIR: ${VN_NEWS_CONFIG_HOST_DIR:-/absolute/path/to/vn-news-config/configs}
@@ -44,6 +45,11 @@ services:
   airflow-scheduler:
     <<: *airflow-common
     command: airflow scheduler
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+      airflow-api-server:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname \"$$(hostname)\""]
       interval: 30s
