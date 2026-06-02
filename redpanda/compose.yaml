@@ -1,6 +1,7 @@
 services:
   redpanda:
     image: ${REDPANDA_IMAGE:-redpandadata/redpanda:v26.1.9}
+    restart: unless-stopped
     command:
       - redpanda
       - start
@@ -28,6 +29,7 @@ services:
 
   redpanda-console:
     image: ${REDPANDA_CONSOLE_IMAGE:-docker.redpanda.com/redpandadata/console:v3.7.3}
+    restart: unless-stopped
     depends_on:
       redpanda:
         condition: service_healthy

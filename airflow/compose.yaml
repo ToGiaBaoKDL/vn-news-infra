@@ -34,6 +34,7 @@ x-airflow-common: &airflow-common
 services:
   airflow-db:
     image: ${AIRFLOW_DB_IMAGE:-postgres:16.9}
+    restart: unless-stopped
     environment:
       POSTGRES_DB: airflow
       POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD:?set AIRFLOW_DB_PASSWORD}
@@ -49,6 +50,7 @@ services:
 
   docker-socket-proxy:
     image: ${DOCKER_SOCKET_PROXY_IMAGE:-tecnativa/docker-socket-proxy:v0.4.2}
+    restart: unless-stopped
     environment:
       CONTAINERS: "1"
       IMAGES: "1"
@@ -65,6 +67,7 @@ services:
   airflow-scheduler:
     <<: *airflow-common
     command: airflow scheduler
+    restart: unless-stopped
     depends_on:
       airflow-api-server:
         condition: service_healthy
@@ -84,6 +87,7 @@ services:
   airflow-dag-processor:
     <<: *airflow-common
     command: airflow dag-processor
+    restart: unless-stopped
     environment:
       <<: [*airflow-env, *rss-task-env]
     healthcheck:
@@ -96,6 +100,7 @@ services:
   airflow-api-server:
     <<: *airflow-common
     command: airflow api-server
+    restart: unless-stopped
     environment: *airflow-env
     ports:
       - "${ADMIN_BIND_ADDRESS:-127.0.0.1}:8090:8080"

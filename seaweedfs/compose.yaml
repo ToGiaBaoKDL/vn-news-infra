@@ -1,6 +1,7 @@
 services:
   seaweedfs-s3:
     image: ${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.29}
+    restart: unless-stopped
     command: server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
     ports:
       - "${PLATFORM_PRIVATE_IP:?set PLATFORM_PRIVATE_IP}:8333:8333"
