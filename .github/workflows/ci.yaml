@@ -14,9 +14,26 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out infra
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
-      - name: Validate Compose
+      - name: Validate role env templates
         run: |
-          docker compose --env-file .env.example -f compose.yaml config --quiet
-          docker compose --env-file .env.workers.example -f compose.workers.yaml config --quiet
+          test -f env/data.env.example
+          test -f env/control.env.example
+          test -f env/processing.env.example
+          if find . -maxdepth 1 -name '.env*.example' | grep -q .; then
+            echo "Root env example files are not allowed; use env/<role>.env.example."
+            exit 1
+          fi
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: 1.15.5
+
+      - name: Validate Terraform
+        run: |
+          terraform -chdir=terraform/oci fmt -check -recursive
+          terraform -chdir=terraform/oci init -backend=false
+          terraform -chdir=terraform/oci validate
+          python3 scripts/check_terraform_guardrails.py
