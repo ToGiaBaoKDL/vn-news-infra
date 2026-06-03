@@ -111,11 +111,19 @@ PermitRootLogin no
 PubkeyAuthentication yes
 EOF
 
-  if systemctl list-unit-files | grep -q '^ssh\.service'; then
-    systemctl reload ssh
-  else
-    systemctl reload sshd
+  sshd -t
+
+  if systemctl list-unit-files ssh.service --no-legend >/dev/null 2>&1; then
+    systemctl reload ssh.service || systemctl restart ssh.service
+    return
   fi
+
+  if systemctl list-unit-files sshd.service --no-legend >/dev/null 2>&1; then
+    systemctl reload sshd.service || systemctl restart sshd.service
+    return
+  fi
+
+  service ssh reload || service ssh restart
 }
 
 configure_firewall() {
