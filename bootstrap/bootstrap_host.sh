@@ -145,6 +145,13 @@ configure_runtime_dirs() {
   log "Creating runtime directories"
   ensure_dir /etc/vn-news 0750 root:vn-news
   ensure_dir /etc/vn-news/env 0750 root:vn-news
+
+  cat >/etc/tmpfiles.d/vn-news.conf <<'EOF'
+d /run/vn-news 0700 root root -
+d /run/vn-news/secrets 0700 root root -
+EOF
+  systemd-tmpfiles --create /etc/tmpfiles.d/vn-news.conf
+
   ensure_dir /run/vn-news 0700 root:root
   ensure_dir /run/vn-news/secrets 0700 root:root
 
