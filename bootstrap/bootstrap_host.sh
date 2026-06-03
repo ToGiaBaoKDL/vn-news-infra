@@ -225,6 +225,8 @@ mount_data_volume() {
     mount "$mount_point"
   fi
 
+  chown root:vn-news "$mount_point"
+  chmod 0775 "$mount_point"
   ensure_dir "$mount_point/redpanda" 0775 root:vn-news
   ensure_dir "$mount_point/seaweedfs" 0775 root:vn-news
   ensure_dir "$mount_point/polaris-postgres" 0775 root:vn-news
