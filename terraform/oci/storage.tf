@@ -12,12 +12,11 @@ resource "oci_core_volume" "data" {
 }
 
 resource "oci_core_volume_attachment" "data" {
-  attachment_type                     = "paravirtualized"
-  display_name                        = "${local.resource_prefix}-data-volume-1-attachment"
-  instance_id                         = oci_core_instance.node[local.roles["data"].node_name].id
-  volume_id                           = oci_core_volume.data.id
-  is_pv_encryption_in_transit_enabled = true
-  is_read_only                        = false
+  attachment_type = "paravirtualized"
+  display_name    = "${local.resource_prefix}-data-volume-1-attachment"
+  instance_id     = oci_core_instance.node[local.roles["data"].node_name].id
+  volume_id       = oci_core_volume.data.id
+  is_read_only    = false
 }
 
 resource "oci_objectstorage_bucket" "recovery" {
