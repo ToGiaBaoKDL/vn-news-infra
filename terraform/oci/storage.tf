@@ -6,8 +6,8 @@ resource "oci_core_volume" "data" {
   availability_domain = var.availability_domain
   compartment_id      = var.compartment_ocid
   display_name        = "${local.resource_prefix}-data-volume-1"
-  size_in_gbs         = local.data_volume_size_gb
-  vpus_per_gb         = local.data_volume_vpus_per_gb
+  size_in_gbs         = tostring(local.data_volume_size_gb)
+  vpus_per_gb         = tostring(local.data_volume_vpus_per_gb)
   freeform_tags       = merge(local.common_tags, { role = "data" })
 }
 
