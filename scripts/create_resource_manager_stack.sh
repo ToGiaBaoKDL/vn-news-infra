@@ -6,16 +6,10 @@ repo_url="${VN_NEWS_INFRA_REPO_URL:-https://github.com/ToGiaBaoKDL/vn-news-infra
 repo_branch="${VN_NEWS_INFRA_BRANCH:-main}"
 working_dir="${VN_NEWS_TERRAFORM_WORKING_DIR:-terraform/oci}"
 terraform_version="${OCI_TERRAFORM_VERSION:-1.5.x}"
-ssh_key_file="${OCI_SSH_AUTHORIZED_KEY_FILE:-$HOME/.ssh/vn_news_oracle_ed25519.pub}"
-ssh_ingress_cidr="${OCI_SSH_INGRESS_CIDR:-0.0.0.0/0}"
+tfvars_file="${VN_NEWS_TFVARS_FILE:-terraform/oci/terraform.tfvars}"
 oci_bin="${OCI_BIN:-oci}"
 
 required_vars=(
-  OCI_COMPARTMENT_OCID
-  OCI_TENANCY_OCID
-  OCI_REGION
-  OCI_AVAILABILITY_DOMAIN
-  OCI_ARM64_UBUNTU_IMAGE_OCID
   OCI_RM_CONFIG_SOURCE_PROVIDER_OCID
 )
 
@@ -31,46 +25,83 @@ if ! command -v "$oci_bin" >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ ! -f "$ssh_key_file" ]]; then
-  echo "SSH public key file not found: ${ssh_key_file}" >&2
+if [[ ! -f "$tfvars_file" ]]; then
+  echo "Terraform variables file not found: ${tfvars_file}" >&2
+  echo "Create it from terraform/oci/terraform.tfvars.example first." >&2
   exit 1
 fi
 
-ssh_authorized_key="$(<"$ssh_key_file")"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
 variables_json="$tmp_dir/resource-manager-variables.json"
-python3 - "$variables_json" <<PY
+compartment_file="$tmp_dir/compartment_ocid"
+python3 - "$tfvars_file" "$variables_json" "$compartment_file" <<'PY'
 from __future__ import annotations
 
 import json
-import os
+import re
 import sys
+from pathlib import Path
+
+
+tfvars_path = Path(sys.argv[1])
+variables_path = Path(sys.argv[2])
+compartment_path = Path(sys.argv[3])
+
+text = tfvars_path.read_text(encoding="utf-8")
+
+
+def read_string(name: str, *, required: bool = True, default: str | None = None) -> str | None:
+    match = re.search(rf'^\s*{re.escape(name)}\s*=\s*"([^"]*)"\s*$', text, re.MULTILINE)
+    if match:
+        return match.group(1)
+    if required:
+        raise SystemExit(f"Missing required Terraform variable in {tfvars_path}: {name}")
+    return default
+
+
+def read_secret_map() -> dict[str, list[str]]:
+    match = re.search(r"^\s*runtime_secret_ocids\s*=\s*\{(?P<body>.*?)^\s*\}", text, re.MULTILINE | re.DOTALL)
+    if not match:
+        return {}
+
+    secrets: dict[str, list[str]] = {}
+    body = match.group("body")
+    for role in ("data", "control", "processing"):
+        role_match = re.search(rf"^\s*{role}\s*=\s*\[(?P<items>.*?)\]\s*$", body, re.MULTILINE | re.DOTALL)
+        if not role_match:
+            continue
+        secrets[role] = re.findall(r'"([^"]+)"', role_match.group("items"))
+    return {role: ocids for role, ocids in secrets.items() if ocids}
 
 variables = {
-    "compartment_ocid": os.environ["OCI_COMPARTMENT_OCID"],
-    "tenancy_ocid": os.environ["OCI_TENANCY_OCID"],
-    "region": os.environ["OCI_REGION"],
-    "availability_domain": os.environ["OCI_AVAILABILITY_DOMAIN"],
-    "arm64_ubuntu_image_ocid": os.environ["OCI_ARM64_UBUNTU_IMAGE_OCID"],
-    "ssh_authorized_key": ${ssh_authorized_key@Q},
-    "ssh_ingress_cidr": ${ssh_ingress_cidr@Q},
-    "runtime_secret_ocids": {},
+    "compartment_ocid": read_string("compartment_ocid"),
+    "tenancy_ocid": read_string("tenancy_ocid"),
+    "region": read_string("region"),
+    "availability_domain": read_string("availability_domain"),
+    "arm64_ubuntu_image_ocid": read_string("arm64_ubuntu_image_ocid"),
+    "ssh_authorized_key": read_string("ssh_authorized_key"),
+    "ssh_ingress_cidr": read_string("ssh_ingress_cidr", required=False, default="0.0.0.0/0"),
+    "runtime_secret_ocids": read_secret_map(),
 }
 
-with open(sys.argv[1], "w", encoding="utf-8") as file:
+with variables_path.open("w", encoding="utf-8") as file:
     json.dump(variables, file, indent=2)
     file.write("\\n")
+
+compartment_path.write_text(variables["compartment_ocid"], encoding="utf-8")
 PY
+compartment_ocid="$(<"$compartment_file")"
 
 echo "Creating Resource Manager stack: ${stack_name}"
 echo "Repository: ${repo_url}"
 echo "Branch: ${repo_branch}"
 echo "Working directory: ${working_dir}"
+echo "Variables file: ${tfvars_file}"
 
 "$oci_bin" resource-manager stack create-from-git-provider \
-  --compartment-id "$OCI_COMPARTMENT_OCID" \
+  --compartment-id "$compartment_ocid" \
   --display-name "$stack_name" \
   --description "VN News production Terraform stack." \
   --config-source-configuration-source-provider-id "$OCI_RM_CONFIG_SOURCE_PROVIDER_OCID" \
