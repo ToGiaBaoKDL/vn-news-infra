@@ -87,12 +87,13 @@ variables = {
 }
 
 with variables_path.open("w", encoding="utf-8") as file:
-    json.dump(variables, file, indent=2)
-    file.write("\\n")
+    json.dump(variables, file, separators=(",", ":"))
+    file.write("\n")
 
 compartment_path.write_text(variables["compartment_ocid"], encoding="utf-8")
 PY
 compartment_ocid="$(<"$compartment_file")"
+variables_payload="$(<"$variables_json")"
 
 echo "Creating Resource Manager stack: ${stack_name}"
 echo "Repository: ${repo_url}"
@@ -109,5 +110,5 @@ echo "Variables file: ${tfvars_file}"
   --config-source-branch-name "$repo_branch" \
   --config-source-working-directory "$working_dir" \
   --terraform-version "$terraform_version" \
-  --variables "file://${variables_json}" \
+  --variables "$variables_payload" \
   --freeform-tags '{"project":"vn-news","environment":"prod","managed-by":"oci-resource-manager"}'
