@@ -83,7 +83,7 @@ variables = {
     "arm64_ubuntu_image_ocid": read_string("arm64_ubuntu_image_ocid"),
     "ssh_authorized_key": read_string("ssh_authorized_key"),
     "ssh_ingress_cidr": read_string("ssh_ingress_cidr", required=False, default="0.0.0.0/0"),
-    "runtime_secret_ocids": read_secret_map(),
+    "runtime_secret_ocids": json.dumps(read_secret_map()),
 }
 
 with variables_path.open("w", encoding="utf-8") as file:
