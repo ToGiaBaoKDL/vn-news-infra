@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+local_resource_manager_env="${VN_NEWS_RESOURCE_MANAGER_ENV_FILE:-.resource-manager.env}"
+
+if [[ -f "$local_resource_manager_env" ]]; then
+  set -a
+  source "$local_resource_manager_env"
+  set +a
+fi
+
 stack_name="${OCI_STACK_DISPLAY_NAME:-tgb-vn-news-prod}"
 repo_url="${VN_NEWS_INFRA_REPO_URL:-https://github.com/ToGiaBaoKDL/vn-news-infra.git}"
 repo_branch="${VN_NEWS_INFRA_BRANCH:-main}"
