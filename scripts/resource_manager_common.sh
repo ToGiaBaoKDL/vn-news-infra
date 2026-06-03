@@ -82,7 +82,7 @@ variables = {
     "compartment_ocid": read_string("compartment_ocid"),
     "tenancy_ocid": read_string("tenancy_ocid"),
     "region": read_string("region"),
-    "availability_domain": read_string("availability_domain"),
+    "availability_domain": read_string("availability_domain", required=False, default="auto"),
     "arm64_ubuntu_image_ocid": read_string("arm64_ubuntu_image_ocid"),
     "ssh_authorized_key": read_string("ssh_authorized_key"),
     "ssh_ingress_cidr": read_string("ssh_ingress_cidr", required=False, default="0.0.0.0/0"),

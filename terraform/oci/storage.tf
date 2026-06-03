@@ -3,7 +3,7 @@ data "oci_objectstorage_namespace" "current" {
 }
 
 resource "oci_core_volume" "data" {
-  availability_domain = var.availability_domain
+  availability_domain = local.availability_domain
   compartment_id      = var.compartment_ocid
   display_name        = "${local.resource_prefix}-data-volume-1"
   size_in_gbs         = tostring(local.data_volume_size_gb)

@@ -1,7 +1,7 @@
 resource "oci_core_instance" "node" {
   for_each = local.nodes
 
-  availability_domain = var.availability_domain
+  availability_domain = local.availability_domain
   compartment_id      = var.compartment_ocid
   display_name        = each.key
   shape               = local.shape

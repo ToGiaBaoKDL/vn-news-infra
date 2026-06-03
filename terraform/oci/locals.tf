@@ -6,6 +6,8 @@ locals {
   vcn_cidr           = "10.0.0.0/16"
   public_subnet_cidr = "10.0.10.0/24"
 
+  availability_domain = var.availability_domain == "auto" ? data.oci_identity_availability_domains.home.availability_domains[0].name : var.availability_domain
+
   shape                   = "VM.Standard.A1.Flex"
   boot_volume_size_gb     = 50
   boot_volume_vpus_per_gb = 10

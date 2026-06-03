@@ -29,12 +29,13 @@ variable "region" {
 }
 
 variable "availability_domain" {
-  description = "Availability domain name used for all Always Free nodes and volumes."
+  description = "Full OCI availability domain name, or auto to use the first tenancy availability domain."
   type        = string
+  default     = "auto"
 
   validation {
-    condition     = length(trimspace(var.availability_domain)) > 0
-    error_message = "availability_domain must not be empty."
+    condition     = var.availability_domain == "auto" || can(regex(":", var.availability_domain))
+    error_message = "availability_domain must be auto or the full OCI availability domain name, for example hlHt:AP-SINGAPORE-1-AD-1."
   }
 }
 
