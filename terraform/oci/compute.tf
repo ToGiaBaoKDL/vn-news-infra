@@ -13,7 +13,7 @@ resource "oci_core_instance" "node" {
   }
 
   create_vnic_details {
-    assign_public_ip = true
+    assign_public_ip = "true"
     display_name     = "${each.key}-primary-vnic"
     hostname_label   = each.value.hostname_label
     nsg_ids          = [oci_core_network_security_group.role[each.value.role].id]
@@ -27,8 +27,8 @@ resource "oci_core_instance" "node" {
   source_details {
     source_id               = var.arm64_ubuntu_image_ocid
     source_type             = "image"
-    boot_volume_size_in_gbs = local.boot_volume_size_gb
-    boot_volume_vpus_per_gb = local.boot_volume_vpus_per_gb
+    boot_volume_size_in_gbs = tostring(local.boot_volume_size_gb)
+    boot_volume_vpus_per_gb = tostring(local.boot_volume_vpus_per_gb)
   }
 
   preserve_boot_volume = false
