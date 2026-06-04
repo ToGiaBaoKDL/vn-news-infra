@@ -232,6 +232,8 @@ assert_not_root_disk() {
 mount_data_volume() {
   local mount_point="/srv/vn-news-data"
   local device uuid
+  local redpanda_uid="${VN_NEWS_REDPANDA_DATA_UID:-101}"
+  local redpanda_gid="${VN_NEWS_REDPANDA_DATA_GID:-101}"
 
   log "Configuring data volume"
   ensure_dir "$mount_point" 0775 root:vn-news
@@ -267,6 +269,8 @@ mount_data_volume() {
   chown root:vn-news "$mount_point"
   chmod 0775 "$mount_point"
   ensure_dir "$mount_point/redpanda" 0775 root:vn-news
+  chown -R "$redpanda_uid:$redpanda_gid" "$mount_point/redpanda"
+  chmod 0750 "$mount_point/redpanda"
   ensure_dir "$mount_point/seaweedfs" 0775 root:vn-news
   ensure_dir "$mount_point/polaris-postgres" 0775 root:vn-news
 }
