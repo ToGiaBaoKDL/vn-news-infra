@@ -1,11 +1,11 @@
 x-airflow-env: &airflow-env
-  AIRFLOW__API_AUTH__JWT_SECRET_CMD: "tr -d '\\n\\r' < /run/secrets/airflow-api-jwt-secret"
+  AIRFLOW__API_AUTH__JWT_SECRET_CMD: cat /run/secrets/airflow-api-jwt-secret
   AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
   AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
   AIRFLOW__CORE__DEFAULT_TIMEZONE: Asia/Ho_Chi_Minh
   AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api-server:8080/execution/
   AIRFLOW__CORE__EXECUTOR: LocalExecutor
-  AIRFLOW__CORE__FERNET_KEY_CMD: "tr -d '\\n\\r' < /run/secrets/airflow-fernet-key"
+  AIRFLOW__CORE__FERNET_KEY_CMD: cat /run/secrets/airflow-fernet-key
   AIRFLOW__CORE__LOAD_EXAMPLES: "false"
   AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: "1"
   AIRFLOW__CORE__PARALLELISM: "4"
