@@ -5,6 +5,8 @@ role="${1:?role is required: data, control, or processing}"
 secrets_dir="${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}"
 oci_bin="${OCI_BIN:-oci}"
 oci_auth="${VN_NEWS_OCI_AUTH:-instance_principal}"
+app_uid="${VN_NEWS_APP_UID:-10001}"
+host_group="${VN_NEWS_HOST_SECRET_GROUP:-vn-news}"
 export PYTHONWARNINGS="${PYTHONWARNINGS:-ignore::FutureWarning}"
 
 require_oci_cli() {
@@ -62,14 +64,14 @@ materialize_role() {
         "${VN_NEWS_SEAWEEDFS_UID:-1000}:${VN_NEWS_SEAWEEDFS_GID:-1000}"
       ;;
     control)
-      write_secret_file VN_NEWS_INGESTION_S3_SECRET_OCID ingestion-s3-credentials
-      write_secret_file VN_NEWS_AIRFLOW_DB_PASSWORD_SECRET_OCID airflow-db-password
-      write_secret_file VN_NEWS_AIRFLOW_JWT_SECRET_OCID airflow-api-jwt-secret
-      write_secret_file VN_NEWS_AIRFLOW_FERNET_KEY_SECRET_OCID airflow-fernet-key
-      write_secret_file VN_NEWS_AIRFLOW_ADMIN_PASSWORD_SECRET_OCID airflow-admin-password
+      write_secret_file VN_NEWS_INGESTION_S3_SECRET_OCID ingestion-s3-credentials 0440 "$app_uid:$host_group"
+      write_secret_file VN_NEWS_AIRFLOW_DB_PASSWORD_SECRET_OCID airflow-db-password 0440 root:root
+      write_secret_file VN_NEWS_AIRFLOW_JWT_SECRET_OCID airflow-api-jwt-secret 0440 root:root
+      write_secret_file VN_NEWS_AIRFLOW_FERNET_KEY_SECRET_OCID airflow-fernet-key 0440 root:root
+      write_secret_file VN_NEWS_AIRFLOW_ADMIN_PASSWORD_SECRET_OCID airflow-admin-password 0440 root:root
       ;;
     processing)
-      write_secret_file VN_NEWS_INGESTION_S3_SECRET_OCID ingestion-s3-credentials
+      write_secret_file VN_NEWS_INGESTION_S3_SECRET_OCID ingestion-s3-credentials 0440 "$app_uid:$host_group"
       ;;
     *)
       echo "Unknown role: $role" >&2
@@ -79,6 +81,6 @@ materialize_role() {
 }
 
 require_oci_cli
-install -d -m 0700 "$secrets_dir"
+install -d -m 0710 -o root -g "$host_group" "$secrets_dir"
 materialize_role
 echo "materialized runtime secrets for role: $role"
