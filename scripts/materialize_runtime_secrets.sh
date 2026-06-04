@@ -24,6 +24,8 @@ oci_auth_args() {
 write_secret_file() {
   local env_name="$1"
   local target_name="$2"
+  local file_mode="${3:-0600}"
+  local file_owner="${4:-root:root}"
   local secret_id="${!env_name:-}"
   local target_path="$secrets_dir/$target_name"
   local tmp_path
@@ -43,14 +45,21 @@ write_secret_file() {
     --raw-output \
     | base64 --decode >"$tmp_path"
 
-  chmod 0600 "$tmp_path"
+  chmod "$file_mode" "$tmp_path"
+  chown "$file_owner" "$tmp_path"
   mv "$tmp_path" "$target_path"
+  chown "$file_owner" "$target_path"
+  chmod "$file_mode" "$target_path"
 }
 
 materialize_role() {
   case "$role" in
     data)
-      write_secret_file VN_NEWS_SEAWEEDFS_S3_CONFIG_SECRET_OCID seaweedfs-s3.json
+      write_secret_file \
+        VN_NEWS_SEAWEEDFS_S3_CONFIG_SECRET_OCID \
+        seaweedfs-s3.json \
+        0400 \
+        "${VN_NEWS_SEAWEEDFS_UID:-1000}:${VN_NEWS_SEAWEEDFS_GID:-1000}"
       ;;
     control)
       write_secret_file VN_NEWS_INGESTION_S3_SECRET_OCID ingestion-s3-credentials
