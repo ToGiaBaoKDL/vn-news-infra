@@ -81,6 +81,7 @@ materialize_role() {
 }
 
 require_oci_cli
+install -d -m 0710 -o root -g "$host_group" "$(dirname "$secrets_dir")"
 install -d -m 0710 -o root -g "$host_group" "$secrets_dir"
 materialize_role
 echo "materialized runtime secrets for role: $role"
