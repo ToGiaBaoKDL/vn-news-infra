@@ -29,7 +29,7 @@ jobs:
       - name: Validate role Compose files
         run: |
           secrets_dir="$(mktemp -d)"
-          for name in seaweedfs-s3.json ingestion-s3-credentials airflow-db-password airflow-api-jwt-secret airflow-fernet-key airflow-admin-password; do
+          for name in seaweedfs-s3-config.json ingestion-s3-credentials airflow-db-password airflow-api-jwt-secret airflow-fernet-key airflow-admin-password; do
             : > "$secrets_dir/$name"
           done
           VN_NEWS_SECRETS_HOST_DIR="$secrets_dir" docker compose --env-file env/data.env.example -f compose.data.yaml config >/dev/null

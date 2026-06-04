@@ -1,7 +1,7 @@
 x-airflow-env: &airflow-env
   AIRFLOW__API_AUTH__JWT_SECRET_CMD: cat /run/secrets/airflow-api-jwt-secret
   AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-  AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+  AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/empty-dags
   AIRFLOW__CORE__DEFAULT_TIMEZONE: Asia/Ho_Chi_Minh
   AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api-server:8080/execution/
   AIRFLOW__CORE__EXECUTOR: LocalExecutor
@@ -10,26 +10,43 @@ x-airflow-env: &airflow-env
   AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: "1"
   AIRFLOW__CORE__PARALLELISM: "4"
   AIRFLOW__DATABASE__SQL_ALCHEMY_CONN_CMD: "bash -c 'printf \"postgresql+psycopg2://airflow:\"; tr -d \"\\n\\r\" < /run/secrets/airflow-db-password; printf \"@airflow-db/airflow\"'"
+  AIRFLOW__DAG_PROCESSOR__BUNDLE_REFRESH_CHECK_INTERVAL: "5"
+  AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_CONFIG_LIST: >-
+    [
+      {
+        "name": "vn-news-orchestration",
+        "classpath": "airflow.providers.git.bundles.git.GitDagBundle",
+        "kwargs": {
+          "repo_url": "${VN_NEWS_ORCHESTRATION_GIT_URL:?set VN_NEWS_ORCHESTRATION_GIT_URL}",
+          "tracking_ref": "${VN_NEWS_ORCHESTRATION_GIT_REF:?set VN_NEWS_ORCHESTRATION_GIT_REF}",
+          "refresh_interval": 60,
+          "submodules": false,
+          "prune_dotgit_folder": true
+        }
+      }
+    ]
+  AIRFLOW__DAG_PROCESSOR__DAG_BUNDLE_STORAGE_PATH: /opt/airflow/dag-bundles
   AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
   VN_NEWS_CONFIG_DIR: /opt/vn-news/configs
 
 x-rss-task-env: &rss-task-env
   VN_NEWS_SECRETS_HOST_DIR: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}
   VN_NEWS_CONFIG_HOST_DIR: ${VN_NEWS_CONFIG_HOST_DIR:?set VN_NEWS_CONFIG_HOST_DIR}
-  VN_NEWS_DOCKER_URL: tcp://docker-socket-proxy:2375
+  VN_NEWS_DOCKER_URL: ${VN_NEWS_DOCKER_URL:?set VN_NEWS_DOCKER_URL}
   VN_NEWS_FEED_INGESTOR_IMAGE: docker.io/toilachuoituyet/vn-news-feed-ingestor:${VN_NEWS_RELEASE_TAG:?set VN_NEWS_RELEASE_TAG}
   VN_NEWS_REDPANDA_BOOTSTRAP_SERVERS: ${VN_NEWS_REDPANDA_BOOTSTRAP_SERVERS:?set VN_NEWS_REDPANDA_BOOTSTRAP_SERVERS}
   VN_NEWS_SCHEMA_REGISTRY_URL: ${VN_NEWS_SCHEMA_REGISTRY_URL:?set VN_NEWS_SCHEMA_REGISTRY_URL}
   VN_NEWS_STORAGE_ENDPOINT_URL: ${VN_NEWS_STORAGE_ENDPOINT_URL:?set VN_NEWS_STORAGE_ENDPOINT_URL}
 
 x-airflow-common: &airflow-common
-  image: docker.io/toilachuoituyet/vn-news-airflow:${VN_NEWS_RELEASE_TAG:?set VN_NEWS_RELEASE_TAG}
+  image: docker.io/toilachuoituyet/vn-news-airflow-runtime:${VN_NEWS_RELEASE_TAG:?set VN_NEWS_RELEASE_TAG}
   depends_on:
     airflow-db:
       condition: service_healthy
   volumes:
     - ${VN_NEWS_CONFIG_HOST_DIR:?set VN_NEWS_CONFIG_HOST_DIR}:/opt/vn-news/configs:ro
     - ${VN_NEWS_AIRFLOW_LOGS_DIR:-/srv/vn-news-control/airflow-logs}:/opt/airflow/logs
+    - ${VN_NEWS_AIRFLOW_DAG_BUNDLES_DIR:-/srv/vn-news-control/airflow-dag-bundles}:/opt/airflow/dag-bundles
 
 x-airflow-secrets: &airflow-secrets
   - airflow-db-password

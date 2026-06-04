@@ -1,0 +1,13 @@
+[project]
+name = "vn-news-airflow-runtime"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "apache-airflow-providers-docker>=4.5.6",
+  "apache-airflow-providers-fab>=3.6.4",
+  "apache-airflow-providers-git>=0.4.0",
+  "PyYAML>=6.0",
+]
+
+[tool.uv]
+package = false
