@@ -3,12 +3,13 @@ services:
     image: docker.io/toilachuoituyet/vn-news-article-fetcher:${VN_NEWS_RELEASE_TAG:?set VN_NEWS_RELEASE_TAG}
     restart: unless-stopped
     environment: &worker-env
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY}
+      AWS_SHARED_CREDENTIALS_FILE: /run/secrets/ingestion-s3-credentials
       VN_NEWS_CONFIG_DIR: /app/configs
       VN_NEWS_REDPANDA_BOOTSTRAP_SERVERS: ${VN_NEWS_REDPANDA_BOOTSTRAP_SERVERS:?set VN_NEWS_REDPANDA_BOOTSTRAP_SERVERS}
       VN_NEWS_SCHEMA_REGISTRY_URL: ${VN_NEWS_SCHEMA_REGISTRY_URL:?set VN_NEWS_SCHEMA_REGISTRY_URL}
       VN_NEWS_STORAGE_ENDPOINT_URL: ${VN_NEWS_STORAGE_ENDPOINT_URL:?set VN_NEWS_STORAGE_ENDPOINT_URL}
+    secrets:
+      - ingestion-s3-credentials
     volumes:
       - ${VN_NEWS_CONFIG_HOST_DIR:?set VN_NEWS_CONFIG_HOST_DIR}:/app/configs:ro
     healthcheck:
@@ -22,6 +23,8 @@ services:
     image: docker.io/toilachuoituyet/vn-news-article-extractor:${VN_NEWS_RELEASE_TAG:?set VN_NEWS_RELEASE_TAG}
     restart: unless-stopped
     environment: *worker-env
+    secrets:
+      - ingestion-s3-credentials
     volumes:
       - ${VN_NEWS_CONFIG_HOST_DIR:?set VN_NEWS_CONFIG_HOST_DIR}:/app/configs:ro
     healthcheck:
@@ -30,3 +33,7 @@ services:
       timeout: 15s
       retries: 3
       start_period: 30s
+
+secrets:
+  ingestion-s3-credentials:
+    file: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}/ingestion-s3-credentials

@@ -1,0 +1,4 @@
+name: vn-news-control
+
+include:
+  - airflow/compose.yaml

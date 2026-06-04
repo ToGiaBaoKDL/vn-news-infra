@@ -1,4 +1,4 @@
-name: vn-news-workers
+name: vn-news-processing
 
 include:
   - ingestion/compose.yaml

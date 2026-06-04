@@ -4,8 +4,8 @@ import argparse
 import base64
 import json
 import os
-import random
 import re
+import secrets
 import string
 import subprocess
 import tempfile
@@ -18,7 +18,7 @@ SECRET_NAMES = {
     "airflow_db_password": "tgb-vn-news-airflow-db-password",
     "airflow_api_jwt_secret": "tgb-vn-news-airflow-api-jwt-secret",
     "airflow_fernet_key": "tgb-vn-news-airflow-fernet-key",
-    "airflow_simple_auth_passwords": "tgb-vn-news-airflow-simple-auth-passwords",
+    "airflow_admin_password": "tgb-vn-news-airflow-admin-password",
 }
 
 ROLE_SECRET_KEYS = {
@@ -28,7 +28,7 @@ ROLE_SECRET_KEYS = {
         "airflow_db_password",
         "airflow_api_jwt_secret",
         "airflow_fernet_key",
-        "airflow_simple_auth_passwords",
+        "airflow_admin_password",
     ),
     "processing": ("ingestion_s3_credentials",),
 }
@@ -43,7 +43,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--key-id", required=True)
     parser.add_argument("--tfvars", default="terraform/oci/terraform.tfvars")
     parser.add_argument("--oci-bin", default=os.environ.get("OCI_BIN", "oci"))
-    parser.add_argument("--airflow-admin-user", default="tgb_admin")
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
@@ -57,19 +56,18 @@ def run_json(command: list[str]) -> dict:
 
 def random_alnum(length: int) -> str:
     alphabet = string.ascii_letters + string.digits
-    return "".join(random.SystemRandom().choice(alphabet) for _ in range(length))
+    return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
 def fernet_key() -> str:
     return base64.urlsafe_b64encode(os.urandom(32)).decode("ascii")
 
 
-def secret_payloads(airflow_admin_user: str) -> dict[str, str]:
+def secret_payloads() -> dict[str, str]:
     platform_access_key = f"vnnewsadmin{random_alnum(20)}"
     platform_secret_key = random_alnum(56)
     ingestion_access_key = f"vnnewsingest{random_alnum(20)}"
     ingestion_secret_key = random_alnum(56)
-    airflow_password = random_alnum(40)
 
     seaweedfs_config = {
         "identities": [
@@ -100,15 +98,13 @@ def secret_payloads(airflow_admin_user: str) -> dict[str, str]:
         f"aws_access_key_id={ingestion_access_key}\n"
         f"aws_secret_access_key={ingestion_secret_key}\n"
     )
-    airflow_passwords = {airflow_admin_user: airflow_password}
-
     return {
         "seaweedfs_s3_config": json.dumps(seaweedfs_config, separators=(",", ":")),
         "ingestion_s3_credentials": ingestion_credentials,
         "airflow_db_password": random_alnum(40),
         "airflow_api_jwt_secret": random_alnum(64),
         "airflow_fernet_key": fernet_key(),
-        "airflow_simple_auth_passwords": json.dumps(airflow_passwords, separators=(",", ":")),
+        "airflow_admin_password": random_alnum(40),
     }
 
 
@@ -222,7 +218,7 @@ def main() -> int:
         secret_ids_by_key = {key: existing_by_name[name] for key, name in SECRET_NAMES.items()}
         print("All required runtime secrets already exist; updating tfvars with existing OCIDs.")
     else:
-        payloads = secret_payloads(args.airflow_admin_user)
+        payloads = secret_payloads()
         secret_ids_by_key = {}
         for key, name in SECRET_NAMES.items():
             secret_id = create_secret(

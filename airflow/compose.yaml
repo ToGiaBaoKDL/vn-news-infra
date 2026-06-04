@@ -1,21 +1,20 @@
 x-airflow-env: &airflow-env
-  AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_API_AUTH_JWT_SECRET:?set AIRFLOW_API_AUTH_JWT_SECRET}
+  AIRFLOW__API_AUTH__JWT_SECRET_CMD: "tr -d '\\n\\r' < /run/secrets/airflow-api-jwt-secret"
+  AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
   AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
   AIRFLOW__CORE__DEFAULT_TIMEZONE: Asia/Ho_Chi_Minh
   AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api-server:8080/execution/
   AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  AIRFLOW__CORE__FERNET_KEY_CMD: "tr -d '\\n\\r' < /run/secrets/airflow-fernet-key"
   AIRFLOW__CORE__LOAD_EXAMPLES: "false"
   AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: "1"
   AIRFLOW__CORE__PARALLELISM: "4"
-  AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "false"
-  AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: ${AIRFLOW_SIMPLE_AUTH_MANAGER_USERS:?set AIRFLOW_SIMPLE_AUTH_MANAGER_USERS}
-  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:${AIRFLOW_DB_PASSWORD:?set AIRFLOW_DB_PASSWORD}@airflow-db/airflow
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN_CMD: "bash -c 'printf \"postgresql+psycopg2://airflow:\"; tr -d \"\\n\\r\" < /run/secrets/airflow-db-password; printf \"@airflow-db/airflow\"'"
   AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
   VN_NEWS_CONFIG_DIR: /opt/vn-news/configs
 
 x-rss-task-env: &rss-task-env
-  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID}
-  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY}
+  VN_NEWS_SECRETS_HOST_DIR: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}
   VN_NEWS_CONFIG_HOST_DIR: ${VN_NEWS_CONFIG_HOST_DIR:?set VN_NEWS_CONFIG_HOST_DIR}
   VN_NEWS_DOCKER_URL: tcp://docker-socket-proxy:2375
   VN_NEWS_FEED_INGESTOR_IMAGE: docker.io/toilachuoituyet/vn-news-feed-ingestor:${VN_NEWS_RELEASE_TAG:?set VN_NEWS_RELEASE_TAG}
@@ -30,6 +29,18 @@ x-airflow-common: &airflow-common
       condition: service_healthy
   volumes:
     - ${VN_NEWS_CONFIG_HOST_DIR:?set VN_NEWS_CONFIG_HOST_DIR}:/opt/vn-news/configs:ro
+    - ${VN_NEWS_AIRFLOW_LOGS_DIR:-/srv/vn-news-control/airflow-logs}:/opt/airflow/logs
+
+x-airflow-secrets: &airflow-secrets
+  - airflow-db-password
+  - airflow-api-jwt-secret
+  - airflow-fernet-key
+
+x-airflow-bootstrap-secrets: &airflow-bootstrap-secrets
+  - airflow-db-password
+  - airflow-api-jwt-secret
+  - airflow-fernet-key
+  - airflow-admin-password
 
 services:
   airflow-db:
@@ -37,16 +48,45 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: airflow
-      POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD:?set AIRFLOW_DB_PASSWORD}
+      POSTGRES_PASSWORD_FILE: /run/secrets/airflow-db-password
       POSTGRES_USER: airflow
+    secrets:
+      - airflow-db-password
     volumes:
-      - airflow-db-data:/var/lib/postgresql/data
+      - ${VN_NEWS_AIRFLOW_DB_DIR:-/srv/vn-news-control/airflow-db}:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 20s
+
+  airflow-bootstrap:
+    <<: *airflow-common
+    profiles: ["bootstrap"]
+    command:
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        airflow db migrate
+        if airflow users list | grep -Fq "${VN_NEWS_AIRFLOW_ADMIN_USERNAME:-tgb_admin}"; then
+          echo "Airflow admin user exists: ${VN_NEWS_AIRFLOW_ADMIN_USERNAME:-tgb_admin}"
+          exit 0
+        fi
+        airflow users create \
+          --username "${VN_NEWS_AIRFLOW_ADMIN_USERNAME:-tgb_admin}" \
+          --firstname VN \
+          --lastname News \
+          --role Admin \
+          --email "${VN_NEWS_AIRFLOW_ADMIN_EMAIL:-admin@vn-news.local}" \
+          --password "$(tr -d '\n\r' < /run/secrets/airflow-admin-password)"
+    restart: "no"
+    environment:
+      <<: *airflow-env
+      VN_NEWS_AIRFLOW_ADMIN_EMAIL: ${VN_NEWS_AIRFLOW_ADMIN_EMAIL:-admin@vn-news.local}
+      VN_NEWS_AIRFLOW_ADMIN_USERNAME: ${VN_NEWS_AIRFLOW_ADMIN_USERNAME:-tgb_admin}
+    secrets: *airflow-bootstrap-secrets
 
   docker-socket-proxy:
     image: ${DOCKER_SOCKET_PROXY_IMAGE:-tecnativa/docker-socket-proxy:v0.4.2}
@@ -77,6 +117,7 @@ services:
         condition: service_healthy
     environment:
       <<: [*airflow-env, *rss-task-env]
+    secrets: *airflow-secrets
     healthcheck:
       test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname \"$$(hostname)\""]
       interval: 30s
@@ -90,6 +131,7 @@ services:
     restart: unless-stopped
     environment:
       <<: [*airflow-env, *rss-task-env]
+    secrets: *airflow-secrets
     healthcheck:
       test: ["CMD-SHELL", "airflow jobs check --job-type DagProcessorJob --hostname \"$$(hostname)\""]
       interval: 30s
@@ -102,8 +144,9 @@ services:
     command: airflow api-server
     restart: unless-stopped
     environment: *airflow-env
+    secrets: *airflow-secrets
     ports:
-      - "${ADMIN_BIND_ADDRESS:-127.0.0.1}:8090:8080"
+      - "${VN_NEWS_ADMIN_BIND_ADDRESS:-127.0.0.1}:8090:8080"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/v2/monitor/health >/dev/null"]
       interval: 10s
@@ -111,5 +154,12 @@ services:
       retries: 12
       start_period: 30s
 
-volumes:
-  airflow-db-data:
+secrets:
+  airflow-db-password:
+    file: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}/airflow-db-password
+  airflow-api-jwt-secret:
+    file: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}/airflow-api-jwt-secret
+  airflow-fernet-key:
+    file: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}/airflow-fernet-key
+  airflow-admin-password:
+    file: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}/airflow-admin-password
