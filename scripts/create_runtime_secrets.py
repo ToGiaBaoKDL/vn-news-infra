@@ -14,7 +14,7 @@ from pathlib import Path
 
 SECRET_NAMES = {
     "seaweedfs_s3_config": "tgb-vn-news-seaweedfs-s3-config",
-    "platform_s3_credentials": "tgb-vn-news-platform-s3-credentials",
+    "storage_admin_s3_credentials": "tgb-vn-news-storage-admin-s3-credentials",
     "ingestion_s3_credentials": "tgb-vn-news-ingestion-s3-credentials",
     "airflow_db_password": "tgb-vn-news-airflow-db-password",
     "airflow_api_jwt_secret": "tgb-vn-news-airflow-api-jwt-secret",
@@ -25,7 +25,7 @@ SECRET_NAMES = {
 ROLE_SECRET_KEYS = {
     "data": ("seaweedfs_s3_config",),
     "control": (
-        "platform_s3_credentials",
+        "storage_admin_s3_credentials",
         "ingestion_s3_credentials",
         "airflow_db_password",
         "airflow_api_jwt_secret",
@@ -66,19 +66,19 @@ def fernet_key() -> str:
 
 
 def secret_payloads() -> dict[str, str]:
-    platform_access_key = f"vnnewsadmin{random_alnum(20)}"
-    platform_secret_key = random_alnum(56)
+    storage_admin_access_key = f"vnnewsadmin{random_alnum(20)}"
+    storage_admin_secret_key = random_alnum(56)
     ingestion_access_key = f"vnnewsingest{random_alnum(20)}"
     ingestion_secret_key = random_alnum(56)
 
     seaweedfs_config = {
         "identities": [
             {
-                "name": "vn-news-platform-admin",
+                "name": "vn-news-storage-admin",
                 "credentials": [
                     {
-                        "accessKey": platform_access_key,
-                        "secretKey": platform_secret_key,
+                        "accessKey": storage_admin_access_key,
+                        "secretKey": storage_admin_secret_key,
                     }
                 ],
                 "actions": ["Admin", "Read", "Write", "List", "Tagging"],
@@ -100,14 +100,14 @@ def secret_payloads() -> dict[str, str]:
         f"aws_access_key_id={ingestion_access_key}\n"
         f"aws_secret_access_key={ingestion_secret_key}\n"
     )
-    platform_credentials = (
+    storage_admin_credentials = (
         "[default]\n"
-        f"aws_access_key_id={platform_access_key}\n"
-        f"aws_secret_access_key={platform_secret_key}\n"
+        f"aws_access_key_id={storage_admin_access_key}\n"
+        f"aws_secret_access_key={storage_admin_secret_key}\n"
     )
     return {
         "seaweedfs_s3_config": json.dumps(seaweedfs_config, separators=(",", ":")),
-        "platform_s3_credentials": platform_credentials,
+        "storage_admin_s3_credentials": storage_admin_credentials,
         "ingestion_s3_credentials": ingestion_credentials,
         "airflow_db_password": random_alnum(40),
         "airflow_api_jwt_secret": random_alnum(64),
@@ -183,43 +183,6 @@ def create_secret(
     return payload["data"]["id"]
 
 
-def read_secret_content(oci_bin: str, secret_id: str) -> str:
-    payload = subprocess.run(
-        [
-            oci_bin,
-            "secrets",
-            "secret-bundle",
-            "get",
-            "--secret-id",
-            secret_id,
-            "--query",
-            'data."secret-bundle-content".content',
-            "--raw-output",
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
-    return base64.b64decode(payload.strip()).decode("utf-8")
-
-
-def platform_credentials_from_seaweedfs_config(content: str) -> str:
-    config = json.loads(content)
-    for identity in config.get("identities", []):
-        if identity.get("name") != "vn-news-platform-admin":
-            continue
-        credentials = identity.get("credentials", [])
-        if not credentials:
-            break
-        credential = credentials[0]
-        return (
-            "[default]\n"
-            f"aws_access_key_id={credential['accessKey']}\n"
-            f"aws_secret_access_key={credential['secretKey']}\n"
-        )
-    raise ValueError("SeaweedFS config does not contain vn-news-platform-admin credentials")
-
-
 def hcl_list(values: tuple[str, ...]) -> str:
     rendered = ",\n".join(f'    "{value}"' for value in values)
     return f"[\n{rendered}\n  ]"
@@ -255,23 +218,6 @@ def main() -> int:
     if existing_required == required_names:
         secret_ids_by_key = {key: existing_by_name[name] for key, name in SECRET_NAMES.items()}
         print("All required runtime secrets already exist; updating tfvars with existing OCIDs.")
-    elif existing_required and missing_names == {SECRET_NAMES["platform_s3_credentials"]}:
-        seaweedfs_secret_id = existing_by_name[SECRET_NAMES["seaweedfs_s3_config"]]
-        content = platform_credentials_from_seaweedfs_config(
-            read_secret_content(args.oci_bin, seaweedfs_secret_id)
-        )
-        secret_id = create_secret(
-            oci_bin=args.oci_bin,
-            compartment_id=args.compartment_id,
-            vault_id=args.vault_id,
-            key_id=args.key_id,
-            name=SECRET_NAMES["platform_s3_credentials"],
-            content=content,
-            dry_run=args.dry_run,
-        )
-        print(f"created {SECRET_NAMES['platform_s3_credentials']}: {secret_id}")
-        existing_by_name[SECRET_NAMES["platform_s3_credentials"]] = secret_id
-        secret_ids_by_key = {key: existing_by_name[name] for key, name in SECRET_NAMES.items()}
     elif existing_required:
         missing = sorted(missing_names)
         raise SystemExit(

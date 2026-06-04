@@ -59,20 +59,20 @@ materialize_role() {
     data)
       write_secret_file \
         VN_NEWS_SEAWEEDFS_S3_CONFIG_SECRET_OCID \
-        seaweedfs-s3.json \
+        seaweedfs-s3-config.json \
         0400 \
         "${VN_NEWS_SEAWEEDFS_UID:-1000}:${VN_NEWS_SEAWEEDFS_GID:-1000}"
       ;;
     control)
-      write_secret_file VN_NEWS_PLATFORM_S3_SECRET_OCID platform-s3-credentials 0440 "root:$host_group"
-      write_secret_file VN_NEWS_INGESTION_S3_SECRET_OCID ingestion-s3-credentials 0440 "$app_uid:$host_group"
+      write_secret_file VN_NEWS_STORAGE_ADMIN_S3_CREDENTIALS_SECRET_OCID storage-admin-s3-credentials 0440 "root:$host_group"
+      write_secret_file VN_NEWS_INGESTION_S3_CREDENTIALS_SECRET_OCID ingestion-s3-credentials 0440 "$app_uid:$host_group"
       write_secret_file VN_NEWS_AIRFLOW_DB_PASSWORD_SECRET_OCID airflow-db-password 0440 root:root
-      write_secret_file VN_NEWS_AIRFLOW_JWT_SECRET_OCID airflow-api-jwt-secret 0440 root:root
+      write_secret_file VN_NEWS_AIRFLOW_API_JWT_SECRET_OCID airflow-api-jwt-secret 0440 root:root
       write_secret_file VN_NEWS_AIRFLOW_FERNET_KEY_SECRET_OCID airflow-fernet-key 0440 root:root
       write_secret_file VN_NEWS_AIRFLOW_ADMIN_PASSWORD_SECRET_OCID airflow-admin-password 0440 root:root
       ;;
     processing)
-      write_secret_file VN_NEWS_INGESTION_S3_SECRET_OCID ingestion-s3-credentials 0440 "$app_uid:$host_group"
+      write_secret_file VN_NEWS_INGESTION_S3_CREDENTIALS_SECRET_OCID ingestion-s3-credentials 0440 "$app_uid:$host_group"
       ;;
     *)
       echo "Unknown role: $role" >&2

@@ -20,4 +20,4 @@ services:
 
 secrets:
   seaweedfs-s3-config:
-    file: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}/seaweedfs-s3.json
+    file: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}/seaweedfs-s3-config.json
