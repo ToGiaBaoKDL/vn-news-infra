@@ -5,6 +5,7 @@ role="${1:?role is required: data, control, or processing}"
 secrets_dir="${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}"
 oci_bin="${OCI_BIN:-oci}"
 oci_auth="${VN_NEWS_OCI_AUTH:-instance_principal}"
+export PYTHONWARNINGS="${PYTHONWARNINGS:-ignore::FutureWarning}"
 
 require_oci_cli() {
   if ! command -v "$oci_bin" >/dev/null 2>&1; then
