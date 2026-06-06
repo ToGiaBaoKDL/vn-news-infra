@@ -81,5 +81,4 @@ mount_data_volume() {
   ensure_dir "$mount_point/seaweedfs" 0775 root:vn-news
   chown -R "$seaweedfs_uid:$seaweedfs_gid" "$mount_point/seaweedfs"
   chmod 0750 "$mount_point/seaweedfs"
-  ensure_dir "$mount_point/polaris-postgres" 0775 root:vn-news
 }
