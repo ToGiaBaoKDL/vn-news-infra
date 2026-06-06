@@ -26,6 +26,9 @@ jobs:
             exit 1
           fi
 
+      - name: Validate shell scripts
+        run: find bootstrap scripts -name '*.sh' -print0 | xargs -0 -n1 bash -n
+
       - name: Validate role Compose files
         run: |
           secrets_dir="$(mktemp -d)"
