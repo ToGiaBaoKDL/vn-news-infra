@@ -1,6 +1,10 @@
-DATA_COMPOSE := docker compose --env-file .env -f compose.data.yaml
-CONTROL_COMPOSE := docker compose --env-file .env -f compose.control.yaml
-PROCESSING_COMPOSE := docker compose --env-file .env -f compose.processing.yaml
+DATA_ENV ?= /etc/vn-news/env/data.env
+CONTROL_ENV ?= /etc/vn-news/env/control.env
+PROCESSING_ENV ?= /etc/vn-news/env/processing.env
+
+DATA_COMPOSE := docker compose --env-file $(DATA_ENV) -f compose.data.yaml
+CONTROL_COMPOSE := docker compose --env-file $(CONTROL_ENV) -f compose.control.yaml
+PROCESSING_COMPOSE := docker compose --env-file $(PROCESSING_ENV) -f compose.processing.yaml
 
 .PHONY: pull-data up-data down-data logs-data status-data
 .PHONY: pull-control init-control up-control down-control logs-control status-control
