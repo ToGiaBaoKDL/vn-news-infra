@@ -20,6 +20,7 @@ locals {
   recovery_daily_retention_days   = 14
   recovery_release_retention_days = 90
   data_volume_alarm_percent       = 70
+  object_storage_service          = "objectstorage-${var.region}"
 
   backup_schedules = {
     data = {

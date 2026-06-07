@@ -34,6 +34,9 @@ resource "oci_objectstorage_bucket" "recovery" {
 resource "oci_objectstorage_object_lifecycle_policy" "recovery" {
   bucket    = oci_objectstorage_bucket.recovery.name
   namespace = data.oci_objectstorage_namespace.current.namespace
+  depends_on = [
+    oci_identity_policy.object_lifecycle_service_access,
+  ]
 
   rules {
     action      = "DELETE"

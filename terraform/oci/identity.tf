@@ -36,6 +36,17 @@ resource "oci_identity_policy" "recovery_object_access" {
   ]
 }
 
+resource "oci_identity_policy" "object_lifecycle_service_access" {
+  compartment_id = var.tenancy_ocid
+  name           = "${local.resource_prefix}-object-lifecycle-service-access"
+  description    = "Allow regional Object Storage lifecycle policies to manage recovery objects."
+  freeform_tags  = merge(local.common_tags, { role = "recovery" })
+
+  statements = [
+    "Allow service ${local.object_storage_service} to manage object-family in compartment id ${var.compartment_ocid}",
+  ]
+}
+
 resource "oci_identity_policy" "data_metric_publish" {
   compartment_id = var.tenancy_ocid
   name           = "${local.resource_prefix}-data-metric-publish"
