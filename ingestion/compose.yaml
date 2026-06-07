@@ -1,6 +1,6 @@
 services:
   article-fetcher:
-    image: docker.io/toilachuoituyet/vn-news-article-fetcher:${VN_NEWS_RELEASE_TAG:?set VN_NEWS_RELEASE_TAG}
+    image: ${VN_NEWS_IMAGE_REGISTRY:?set VN_NEWS_IMAGE_REGISTRY}/${VN_NEWS_IMAGE_NAMESPACE:?set VN_NEWS_IMAGE_NAMESPACE}/vn-news-article-fetcher:${VN_NEWS_RELEASE_TAG:?set VN_NEWS_RELEASE_TAG}
     restart: unless-stopped
     environment: &worker-env
       AWS_SHARED_CREDENTIALS_FILE: /run/secrets/ingestion-s3-credentials
@@ -20,7 +20,7 @@ services:
       start_period: 30s
 
   article-extractor:
-    image: docker.io/toilachuoituyet/vn-news-article-extractor:${VN_NEWS_RELEASE_TAG:?set VN_NEWS_RELEASE_TAG}
+    image: ${VN_NEWS_IMAGE_REGISTRY:?set VN_NEWS_IMAGE_REGISTRY}/${VN_NEWS_IMAGE_NAMESPACE:?set VN_NEWS_IMAGE_NAMESPACE}/vn-news-article-extractor:${VN_NEWS_RELEASE_TAG:?set VN_NEWS_RELEASE_TAG}
     restart: unless-stopped
     environment: *worker-env
     secrets:
