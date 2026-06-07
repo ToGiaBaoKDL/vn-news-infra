@@ -38,8 +38,8 @@ resource "terraform_data" "always_free_guardrails" {
     }
 
     precondition {
-      condition     = local.guardrails.recovery_bucket_limit_gib == 20
-      error_message = "Always Free guardrail failed: recovery bucket capacity guardrail must remain 20 GiB."
+      condition     = local.guardrails.recovery_bucket_budget_gib == 20
+      error_message = "Always Free guardrail failed: recovery bucket budget must remain 20 GiB."
     }
   }
 }

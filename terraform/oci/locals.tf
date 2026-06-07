@@ -14,12 +14,32 @@ locals {
   data_volume_size_gb     = 50
   data_volume_vpus_per_gb = 10
 
-  recovery_bucket_limit_gib       = 20
+  recovery_bucket_budget_gib      = 20
   recovery_bucket_alarm_percent   = 70
-  recovery_bucket_alarm_bytes     = floor(local.recovery_bucket_limit_gib * 1024 * 1024 * 1024 * local.recovery_bucket_alarm_percent / 100)
+  recovery_bucket_alarm_bytes     = floor(local.recovery_bucket_budget_gib * 1024 * 1024 * 1024 * local.recovery_bucket_alarm_percent / 100)
   recovery_daily_retention_days   = 14
   recovery_release_retention_days = 90
   data_volume_alarm_percent       = 70
+
+  backup_schedules = {
+    data = {
+      backup_type       = "INCREMENTAL"
+      hour_of_day       = 20
+      period            = "ONE_DAY"
+      period_seconds    = 86400
+      retention_seconds = 216000
+      time_zone         = "UTC"
+    }
+    control_boot = {
+      backup_type       = "INCREMENTAL"
+      day_of_week       = "SUNDAY"
+      hour_of_day       = 21
+      period            = "ONE_WEEK"
+      period_seconds    = 604800
+      retention_seconds = 691200
+      time_zone         = "UTC"
+    }
+  }
 
   common_tags = {
     project     = local.project
@@ -63,15 +83,14 @@ locals {
     }
   }
 
-  protected_boot_nodes = {
+  control_boot_nodes = {
     for name, node in local.nodes : name => node
-    if contains(["data", "control"], node.role)
+    if node.role == "control"
   }
 
   backup_slots = {
-    data_volume         = 3
-    data_boot_volume    = 1
-    control_boot_volume = 1
+    data_volume         = ceil(local.backup_schedules.data.retention_seconds / local.backup_schedules.data.period_seconds)
+    control_boot_volume = ceil(local.backup_schedules.control_boot.retention_seconds / local.backup_schedules.control_boot.period_seconds)
   }
 
   data_service_ports = {
@@ -101,6 +120,6 @@ locals {
     vcn_count                   = 1
     recovery_bucket_count       = 1
     retained_backup_slots       = sum(values(local.backup_slots))
-    recovery_bucket_limit_gib   = local.recovery_bucket_limit_gib
+    recovery_bucket_budget_gib  = local.recovery_bucket_budget_gib
   }
 }

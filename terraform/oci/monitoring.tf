@@ -43,7 +43,7 @@ resource "oci_monitoring_alarm" "data_volume_full" {
   metric_compartment_id        = var.compartment_ocid
   namespace                    = "vn_news"
   pending_duration             = "PT15M"
-  query                        = "DataVolumeUtilization[5m]{resourceId = \"${oci_core_instance.node[local.roles["data"].node_name].id}\"}.max() > ${local.data_volume_alarm_percent}"
+  query                        = "DataVolumeUtilization[15m]{resourceId = \"${oci_core_instance.node[local.roles["data"].node_name].id}\"}.max() > ${local.data_volume_alarm_percent}"
   repeat_notification_duration = "PT24H"
   resolution                   = "1m"
   severity                     = "CRITICAL"
@@ -60,7 +60,7 @@ resource "oci_monitoring_alarm" "data_volume_metric_absent" {
   metric_compartment_id        = var.compartment_ocid
   namespace                    = "vn_news"
   pending_duration             = "PT15M"
-  query                        = "DataVolumeUtilization[5m]{resourceId = \"${oci_core_instance.node[local.roles["data"].node_name].id}\"}.absent(30m)"
+  query                        = "DataVolumeUtilization[15m]{resourceId = \"${oci_core_instance.node[local.roles["data"].node_name].id}\"}.absent(45m)"
   repeat_notification_duration = "PT24H"
   resolution                   = "1m"
   severity                     = "CRITICAL"
@@ -68,8 +68,8 @@ resource "oci_monitoring_alarm" "data_volume_metric_absent" {
 }
 
 resource "oci_monitoring_alarm" "recovery_bucket_full" {
-  alarm_summary                = "The recovery bucket is above ${local.recovery_bucket_alarm_percent}% of the Always Free allowance."
-  body                         = "Inspect recovery exports and lifecycle execution before the bucket exceeds the 20 GiB allowance."
+  alarm_summary                = "The recovery bucket is above ${local.recovery_bucket_alarm_percent}% of its storage budget."
+  body                         = "Inspect all tenancy Object Storage usage and recovery lifecycle execution before exceeding the Always Free allowance."
   compartment_id               = var.compartment_ocid
   destinations                 = [oci_ons_notification_topic.operations.id]
   display_name                 = "${local.resource_prefix}-recovery-bucket-full"

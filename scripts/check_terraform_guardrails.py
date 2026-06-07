@@ -23,7 +23,7 @@ EXPECTED = {
     "total_ocpus": 4,
     "total_memory_gb": 24,
     "total_live_block_storage_gb": 200,
-    "recovery_bucket_limit_gib": 20,
+    "recovery_bucket_budget_gib": 20,
 }
 
 
@@ -87,12 +87,12 @@ def main() -> int:
     if total_storage_gb != EXPECTED["total_live_block_storage_gb"]:
         return fail("Terraform must stay at 200 total GB live boot and block storage.")
 
-    if number(text, "recovery_bucket_limit_gib") != EXPECTED["recovery_bucket_limit_gib"]:
-        return fail("Terraform recovery bucket capacity guardrail must remain 20 GiB.")
+    if number(text, "recovery_bucket_budget_gib") != EXPECTED["recovery_bucket_budget_gib"]:
+        return fail("Terraform recovery bucket budget must remain 20 GiB.")
 
     backups = BACKUPS_TF.read_text()
     if backups.count('resource "oci_core_volume_backup_policy_assignment"') != 2:
-        return fail("Terraform must keep data and critical-boot backup policy assignments.")
+        return fail("Terraform must keep data-volume and control-boot backup policy assignments.")
 
     print("Terraform Always Free guardrails match the expected matrix.")
     return 0

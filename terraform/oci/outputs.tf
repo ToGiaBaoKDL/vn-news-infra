@@ -48,10 +48,10 @@ output "recovery_controls" {
     alarm_topic_id                = oci_ons_notification_topic.operations.id
     backup_slots                  = local.backup_slots
     data_backup_policy_id         = oci_core_volume_backup_policy.data.id
-    critical_boot_policy_id       = oci_core_volume_backup_policy.critical_boot.id
+    control_boot_policy_id        = oci_core_volume_backup_policy.control_boot.id
     lifecycle_policy_id           = oci_objectstorage_object_lifecycle_policy.recovery.id
     recovery_bucket_alarm_bytes   = local.recovery_bucket_alarm_bytes
-    recovery_bucket_limit_gib     = local.recovery_bucket_limit_gib
+    recovery_bucket_budget_gib    = local.recovery_bucket_budget_gib
     notification_email_configured = var.alarm_notification_email != ""
   }
 }

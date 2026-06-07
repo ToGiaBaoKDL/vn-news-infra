@@ -2,9 +2,6 @@
 set -euo pipefail
 
 role="${1:?role is required: data or control}"
-deploy_root="${VN_NEWS_DEPLOY_ROOT:-/home/ubuntu/vn-news-intelligence}"
-repos_root="$deploy_root/repos"
-infra_root="$repos_root/vn-news-infra"
 env_file="${VN_NEWS_ENV_FILE:-/etc/vn-news/env/${role}.env}"
 oci_auth="${VN_NEWS_OCI_AUTH:-instance_principal}"
 export PYTHONWARNINGS="${PYTHONWARNINGS:-ignore::FutureWarning}"
@@ -17,7 +14,7 @@ case "$role" in
     ;;
 esac
 
-for command_name in docker grep oci tar; do
+for command_name in docker grep oci seq sleep tar; do
   command -v "$command_name" >/dev/null 2>&1 || {
     echo "Missing required command: $command_name" >&2
     exit 1
@@ -35,7 +32,16 @@ set +a
 bucket="${VN_NEWS_RECOVERY_BUCKET:?VN_NEWS_RECOVERY_BUCKET is required}"
 namespace="$(oci os ns get --auth "$oci_auth" --query data --raw-output)"
 tmp_dir="$(mktemp -d)"
-trap 'rm -rf "$tmp_dir"' EXIT
+restore_container=""
+
+cleanup() {
+  if [[ -n "$restore_container" ]]; then
+    docker rm -f "$restore_container" >/dev/null 2>&1 || true
+  fi
+  rm -rf "$tmp_dir"
+}
+
+trap cleanup EXIT
 
 latest_object() {
   local prefix="$1"
@@ -81,7 +87,7 @@ verify_data() {
 }
 
 verify_control() {
-  local airflow_dump config_archive config_listing release_archive release_listing
+  local airflow_dump config_archive config_listing release_archive release_listing restored_tables
 
   airflow_dump="$(download_latest airflow-db)"
   config_archive="$(download_latest config)"
@@ -89,8 +95,51 @@ verify_control() {
   config_listing="$tmp_dir/config.list"
   release_listing="$tmp_dir/release-manifests.list"
 
-  docker compose --env-file "$env_file" -f "$infra_root/compose.control.yaml" \
-    exec -T airflow-db pg_restore --list <"$airflow_dump" >/dev/null
+  restore_container="vn-news-airflow-restore-$$"
+  docker run -d \
+    --rm \
+    --name "$restore_container" \
+    --network none \
+    --tmpfs /var/lib/postgresql/data:rw,size=512m \
+    -e POSTGRES_HOST_AUTH_METHOD=trust \
+    "${AIRFLOW_DB_IMAGE:-postgres:16.9}" >/dev/null
+  for _ in $(seq 1 30); do
+    if docker exec "$restore_container" pg_isready -U postgres >/dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
+  docker exec "$restore_container" pg_isready -U postgres >/dev/null
+  docker exec "$restore_container" createuser \
+    --username postgres \
+    --login \
+    airflow
+  docker exec "$restore_container" createdb \
+    --username postgres \
+    --owner airflow \
+    airflow
+  docker exec -i "$restore_container" pg_restore \
+    --username postgres \
+    --dbname airflow \
+    --role airflow \
+    --no-owner \
+    --no-privileges \
+    --exit-on-error <"$airflow_dump" >/dev/null
+  restored_tables="$(
+    docker exec "$restore_container" psql \
+      --username postgres \
+      --dbname airflow \
+      --tuples-only \
+      --no-align \
+      --command "select count(*) from information_schema.tables where table_schema = 'public';"
+  )"
+  [[ "$restored_tables" =~ ^[1-9][0-9]*$ ]] || {
+    echo "Airflow restore verification produced no public tables." >&2
+    exit 1
+  }
+  docker rm -f "$restore_container" >/dev/null
+  restore_container=""
+
   tar -tzf "$config_archive" >"$config_listing"
   tar -tzf "$release_archive" >"$release_listing"
   grep -q '^configs/settings.yaml$' "$config_listing"

@@ -33,6 +33,7 @@ Wants=network-online.target
 Type=oneshot
 Environment=VN_NEWS_DEPLOY_ROOT=$deploy_root
 ExecStart=$install_root/export_recovery.sh %i
+TimeoutStartSec=30m
 EOF
 
 cat >/etc/systemd/system/vn-news-recovery-export@.timer <<'EOF'
@@ -59,15 +60,16 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 ExecStart=$install_root/publish_host_metrics.sh
+TimeoutStartSec=2m
 EOF
 
   cat >/etc/systemd/system/vn-news-data-volume-metric.timer <<'EOF'
 [Unit]
-Description=Publish VN News data-volume capacity metric every five minutes
+Description=Publish VN News data-volume capacity metric every fifteen minutes
 
 [Timer]
-OnBootSec=2m
-OnUnitActiveSec=5m
+OnBootSec=5m
+OnUnitActiveSec=15m
 Persistent=true
 
 [Install]
