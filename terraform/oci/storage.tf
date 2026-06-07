@@ -30,3 +30,47 @@ resource "oci_objectstorage_bucket" "recovery" {
   versioning            = "Disabled"
   freeform_tags         = merge(local.common_tags, { role = "recovery" })
 }
+
+resource "oci_objectstorage_object_lifecycle_policy" "recovery" {
+  bucket    = oci_objectstorage_bucket.recovery.name
+  namespace = data.oci_objectstorage_namespace.current.namespace
+
+  rules {
+    action      = "DELETE"
+    is_enabled  = true
+    name        = "delete-daily-recovery-artifacts"
+    target      = "objects"
+    time_amount = local.recovery_daily_retention_days
+    time_unit   = "DAYS"
+
+    object_name_filter {
+      inclusion_patterns = [
+        "airflow-db/*",
+        "config/*",
+        "redpanda-metadata/*",
+      ]
+    }
+  }
+
+  rules {
+    action      = "DELETE"
+    is_enabled  = true
+    name        = "delete-release-manifests"
+    target      = "objects"
+    time_amount = local.recovery_release_retention_days
+    time_unit   = "DAYS"
+
+    object_name_filter {
+      inclusion_patterns = ["release-manifests/*"]
+    }
+  }
+
+  rules {
+    action      = "ABORT"
+    is_enabled  = true
+    name        = "abort-incomplete-uploads"
+    target      = "multipart-uploads"
+    time_amount = 1
+    time_unit   = "DAYS"
+  }
+}

@@ -14,6 +14,13 @@ locals {
   data_volume_size_gb     = 50
   data_volume_vpus_per_gb = 10
 
+  recovery_bucket_limit_gib       = 20
+  recovery_bucket_alarm_percent   = 70
+  recovery_bucket_alarm_bytes     = floor(local.recovery_bucket_limit_gib * 1024 * 1024 * 1024 * local.recovery_bucket_alarm_percent / 100)
+  recovery_daily_retention_days   = 14
+  recovery_release_retention_days = 90
+  data_volume_alarm_percent       = 70
+
   common_tags = {
     project     = local.project
     environment = local.environment
@@ -56,6 +63,17 @@ locals {
     }
   }
 
+  protected_boot_nodes = {
+    for name, node in local.nodes : name => node
+    if contains(["data", "control"], node.role)
+  }
+
+  backup_slots = {
+    data_volume         = 3
+    data_boot_volume    = 1
+    control_boot_volume = 1
+  }
+
   data_service_ports = {
     redpanda_kafka           = 19092
     redpanda_schema_registry = 18081
@@ -82,5 +100,7 @@ locals {
     key_count                   = 1
     vcn_count                   = 1
     recovery_bucket_count       = 1
+    retained_backup_slots       = sum(values(local.backup_slots))
+    recovery_bucket_limit_gib   = local.recovery_bucket_limit_gib
   }
 }

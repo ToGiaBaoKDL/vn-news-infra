@@ -6,6 +6,7 @@ arm64_ubuntu_image_ocid = "ocid1.image.oc1.ap-singapore-1.replace-with-arm64-ubu
 
 ssh_authorized_key = "ssh-ed25519 replace-with-public-key vn-news-oracle-20260603"
 ssh_ingress_cidr   = "0.0.0.0/0"
+alarm_notification_email = ""
 
 runtime_secret_ocids = {
   data       = []

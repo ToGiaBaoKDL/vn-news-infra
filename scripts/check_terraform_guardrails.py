@@ -7,6 +7,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LOCALS_TF = REPO_ROOT / "terraform" / "oci" / "locals.tf"
+BACKUPS_TF = REPO_ROOT / "terraform" / "oci" / "backups.tf"
 
 EXPECTED_NODES = {
     "tgb-data-1": {"ocpus": 1, "memory_gb": 6},
@@ -22,6 +23,7 @@ EXPECTED = {
     "total_ocpus": 4,
     "total_memory_gb": 24,
     "total_live_block_storage_gb": 200,
+    "recovery_bucket_limit_gib": 20,
 }
 
 
@@ -84,6 +86,13 @@ def main() -> int:
         return fail("Terraform must stay at 24 total GB memory.")
     if total_storage_gb != EXPECTED["total_live_block_storage_gb"]:
         return fail("Terraform must stay at 200 total GB live boot and block storage.")
+
+    if number(text, "recovery_bucket_limit_gib") != EXPECTED["recovery_bucket_limit_gib"]:
+        return fail("Terraform recovery bucket capacity guardrail must remain 20 GiB.")
+
+    backups = BACKUPS_TF.read_text()
+    if backups.count('resource "oci_core_volume_backup_policy_assignment"') != 2:
+        return fail("Terraform must keep data and critical-boot backup policy assignments.")
 
     print("Terraform Always Free guardrails match the expected matrix.")
     return 0

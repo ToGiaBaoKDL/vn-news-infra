@@ -86,6 +86,7 @@ variables = {
     "arm64_ubuntu_image_ocid": read_string("arm64_ubuntu_image_ocid"),
     "ssh_authorized_key": read_string("ssh_authorized_key"),
     "ssh_ingress_cidr": read_string("ssh_ingress_cidr", required=False, default="0.0.0.0/0"),
+    "alarm_notification_email": read_string("alarm_notification_email", required=False, default=""),
     "runtime_secret_ocids": json.dumps(read_secret_map()),
 }
 

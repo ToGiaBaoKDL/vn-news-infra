@@ -90,3 +90,14 @@ variable "runtime_secret_ocids" {
     error_message = "runtime_secret_ocids values must be OCI Vault secret OCIDs."
   }
 }
+
+variable "alarm_notification_email" {
+  description = "Optional email endpoint for OCI alarm notifications. OCI requires email confirmation."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.alarm_notification_email == "" || can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", var.alarm_notification_email))
+    error_message = "alarm_notification_email must be empty or a valid email address."
+  }
+}

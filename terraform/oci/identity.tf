@@ -21,3 +21,28 @@ resource "oci_identity_policy" "runtime_secret_read" {
     "Allow dynamic-group ${oci_identity_dynamic_group.role[each.key].name} to read secret-bundles in compartment id ${var.compartment_ocid} where target.secret.id = '${secret_ocid}'"
   ]
 }
+
+resource "oci_identity_policy" "recovery_object_access" {
+  for_each = toset(["data", "control"])
+
+  compartment_id = var.tenancy_ocid
+  name           = "${local.resource_prefix}-${each.key}-recovery-object-access"
+  description    = "Allow ${each.key} node to manage compact recovery exports."
+  freeform_tags  = merge(local.common_tags, { role = each.key })
+
+  statements = [
+    "Allow dynamic-group ${oci_identity_dynamic_group.role[each.key].name} to manage objects in compartment id ${var.compartment_ocid} where target.bucket.name = '${oci_objectstorage_bucket.recovery.name}'",
+    "Allow dynamic-group ${oci_identity_dynamic_group.role[each.key].name} to read buckets in compartment id ${var.compartment_ocid} where target.bucket.name = '${oci_objectstorage_bucket.recovery.name}'",
+  ]
+}
+
+resource "oci_identity_policy" "data_metric_publish" {
+  compartment_id = var.tenancy_ocid
+  name           = "${local.resource_prefix}-data-metric-publish"
+  description    = "Allow the data node to publish mount-capacity metrics."
+  freeform_tags  = merge(local.common_tags, { role = "data" })
+
+  statements = [
+    "Allow dynamic-group ${oci_identity_dynamic_group.role["data"].name} to use metrics in compartment id ${var.compartment_ocid}",
+  ]
+}
