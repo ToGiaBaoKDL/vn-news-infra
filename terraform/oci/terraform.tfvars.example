@@ -9,7 +9,11 @@ ssh_ingress_cidr   = "0.0.0.0/0"
 alarm_notification_email = ""
 
 runtime_secret_ocids = {
-  data       = []
-  control    = []
+  data = [
+    # seaweedfs config and Cloudflare data tunnel token
+  ]
+  control = [
+    # Airflow, storage, ingestion, and Cloudflare control tunnel secrets
+  ]
   processing = []
 }

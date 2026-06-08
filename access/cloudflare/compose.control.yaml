@@ -1,0 +1,25 @@
+services:
+  cloudflared-control:
+    image: ${VN_NEWS_CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2026.5.2}
+    network_mode: host
+    restart: unless-stopped
+    command:
+      - tunnel
+      - --no-autoupdate
+      - --metrics
+      - 0.0.0.0:2000
+      - run
+      - --token-file
+      - /run/secrets/cloudflare-control-tunnel-token
+    secrets:
+      - cloudflare-control-tunnel-token
+    healthcheck:
+      test: ["CMD", "cloudflared", "version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+secrets:
+  cloudflare-control-tunnel-token:
+    file: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}/cloudflare-control-tunnel-token

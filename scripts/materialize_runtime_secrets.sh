@@ -62,6 +62,7 @@ materialize_role() {
         seaweedfs-s3-config.json \
         0400 \
         "${VN_NEWS_SEAWEEDFS_UID:-1000}:${VN_NEWS_SEAWEEDFS_GID:-1000}"
+      write_secret_file VN_NEWS_CLOUDFLARE_DATA_TUNNEL_TOKEN_SECRET_OCID cloudflare-data-tunnel-token 0400 root:root
       ;;
     control)
       write_secret_file VN_NEWS_STORAGE_ADMIN_S3_CREDENTIALS_SECRET_OCID storage-admin-s3-credentials 0440 "root:$host_group"
@@ -70,6 +71,7 @@ materialize_role() {
       write_secret_file VN_NEWS_AIRFLOW_API_JWT_SECRET_OCID airflow-api-jwt-secret 0440 root:root
       write_secret_file VN_NEWS_AIRFLOW_FERNET_KEY_SECRET_OCID airflow-fernet-key 0440 root:root
       write_secret_file VN_NEWS_AIRFLOW_ADMIN_PASSWORD_SECRET_OCID airflow-admin-password 0440 root:root
+      write_secret_file VN_NEWS_CLOUDFLARE_CONTROL_TUNNEL_TOKEN_SECRET_OCID cloudflare-control-tunnel-token 0400 root:root
       ;;
     processing)
       write_secret_file VN_NEWS_INGESTION_S3_CREDENTIALS_SECRET_OCID ingestion-s3-credentials 0440 "$app_uid:$host_group"

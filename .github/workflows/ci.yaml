@@ -32,7 +32,7 @@ jobs:
       - name: Validate role Compose files
         run: |
           secrets_dir="$(mktemp -d)"
-          for name in seaweedfs-s3-config.json ingestion-s3-credentials airflow-db-password airflow-api-jwt-secret airflow-fernet-key airflow-admin-password; do
+          for name in seaweedfs-s3-config.json ingestion-s3-credentials airflow-db-password airflow-api-jwt-secret airflow-fernet-key airflow-admin-password cloudflare-control-tunnel-token cloudflare-data-tunnel-token; do
             : > "$secrets_dir/$name"
           done
           VN_NEWS_SECRETS_HOST_DIR="$secrets_dir" docker compose --env-file env/data.env.example -f compose.data.yaml config >/dev/null
@@ -49,4 +49,7 @@ jobs:
           terraform -chdir=terraform/oci fmt -check -recursive
           terraform -chdir=terraform/oci init -backend=false
           terraform -chdir=terraform/oci validate
+          terraform -chdir=terraform/cloudflare fmt -check -recursive
+          terraform -chdir=terraform/cloudflare init -backend=false
+          terraform -chdir=terraform/cloudflare validate
           python3 scripts/check_terraform_guardrails.py
