@@ -10,16 +10,17 @@ services:
       - 0.0.0.0:2000
       - run
       - --token-file
-      - /run/secrets/cloudflare-control-tunnel-token
-    secrets:
-      - cloudflare-control-tunnel-token
+      - /run/vn-news/secrets/cloudflare-control-tunnel-token
+    volumes:
+      - type: bind
+        source: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}/cloudflare-control-tunnel-token
+        target: /run/vn-news/secrets/cloudflare-control-tunnel-token
+        read_only: true
+        bind:
+          create_host_path: false
     healthcheck:
       test: ["CMD", "cloudflared", "version"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 20s
-
-secrets:
-  cloudflare-control-tunnel-token:
-    file: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}/cloudflare-control-tunnel-token
