@@ -59,6 +59,16 @@ upload() {
   echo "uploaded recovery object: $object_name"
 }
 
+export_release_identity() {
+  local artifact="$tmp_dir/release-identity-${timestamp}.txt"
+
+  printf 'release_tag=%s\nimage_tag=%s\n' \
+    "${VN_NEWS_RELEASE_TAG:?VN_NEWS_RELEASE_TAG is required}" \
+    "${VN_NEWS_IMAGE_TAG:?VN_NEWS_IMAGE_TAG is required}" \
+    >"$artifact"
+  upload release-identity "$artifact"
+}
+
 export_data() {
   local metadata_dir="$tmp_dir/redpanda-metadata"
   local artifact="$tmp_dir/redpanda-metadata-${timestamp}.tar.gz"
@@ -96,6 +106,12 @@ export_control() {
 }
 
 case "$role" in
-  data) export_data ;;
-  control) export_control ;;
+  data)
+    export_release_identity
+    export_data
+    ;;
+  control)
+    export_release_identity
+    export_control
+    ;;
 esac
