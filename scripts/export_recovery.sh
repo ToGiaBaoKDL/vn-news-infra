@@ -2,7 +2,7 @@
 set -euo pipefail
 
 role="${1:?role is required: data or control}"
-deploy_root="${VN_NEWS_DEPLOY_ROOT:-/home/ubuntu/vn-news-intelligence}"
+deploy_root="${VN_NEWS_DEPLOY_ROOT:-$HOME/vn-news-intelligence}"
 repos_root="$deploy_root/repos"
 infra_root="$repos_root/vn-news-infra"
 env_file="${VN_NEWS_ENV_FILE:-/etc/vn-news/env/${role}.env}"

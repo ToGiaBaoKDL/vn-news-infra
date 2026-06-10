@@ -2,7 +2,7 @@
 set -euo pipefail
 
 role="${1:?role is required: data or control}"
-deploy_root="${2:-/home/ubuntu/vn-news-intelligence}"
+deploy_root="${2:?deploy root is required}"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 install_root="/usr/local/lib/vn-news"
 
