@@ -138,7 +138,7 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname \"$$(hostname)\""]
       interval: 30s
-      timeout: 10s
+      timeout: 20s
       retries: 5
       start_period: 30s
 
@@ -152,7 +152,7 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "airflow jobs check --job-type DagProcessorJob --hostname \"$$(hostname)\""]
       interval: 30s
-      timeout: 10s
+      timeout: 20s
       retries: 5
       start_period: 30s
 
