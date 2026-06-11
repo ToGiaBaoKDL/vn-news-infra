@@ -47,13 +47,15 @@ resource "oci_identity_policy" "object_lifecycle_service_access" {
   ]
 }
 
-resource "oci_identity_policy" "data_metric_publish" {
+resource "oci_identity_policy" "metric_publish" {
+  for_each = toset(["data", "processing"])
+
   compartment_id = var.tenancy_ocid
-  name           = "${local.resource_prefix}-data-metric-publish"
-  description    = "Allow the data node to publish mount-capacity metrics."
-  freeform_tags  = merge(local.common_tags, { role = "data" })
+  name           = "${local.resource_prefix}-${each.key}-metric-publish"
+  description    = "Allow ${each.key} node to publish VN News custom metrics."
+  freeform_tags  = merge(local.common_tags, { role = each.key })
 
   statements = [
-    "Allow dynamic-group ${oci_identity_dynamic_group.role["data"].name} to use metrics in compartment id ${var.compartment_ocid}",
+    "Allow dynamic-group ${oci_identity_dynamic_group.role[each.key].name} to use metrics in compartment id ${var.compartment_ocid}",
   ]
 }

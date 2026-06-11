@@ -19,8 +19,11 @@ locals {
   recovery_bucket_alarm_bytes     = floor(local.recovery_bucket_budget_gib * 1024 * 1024 * 1024 * local.recovery_bucket_alarm_percent / 100)
   recovery_daily_retention_days   = 14
   recovery_release_retention_days = 90
+  metric_namespace                = "vn_news"
   data_volume_alarm_percent       = 70
+  pipeline_lag_alarm_threshold    = 100
   object_storage_service          = "objectstorage-${var.region}"
+  pipeline_consumer_groups        = toset(["article_fetcher", "article_extractor"])
 
   backup_schedules = {
     data = {
