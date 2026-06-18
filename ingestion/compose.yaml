@@ -44,7 +44,7 @@ services:
     volumes:
       - ${VN_NEWS_CONFIG_HOST_DIR:?set VN_NEWS_CONFIG_HOST_DIR}:/app/configs:ro
     healthcheck:
-      test: ["CMD", "python", "-m", "news_service_common.health"]
+      test: ["CMD", "python", "-m", "news_service_common.health", "--checks", "event_bus,schema_registry"]
       interval: 30s
       timeout: 15s
       retries: 3
