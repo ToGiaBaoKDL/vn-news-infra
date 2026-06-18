@@ -10,6 +10,7 @@ PROCESSING_COMPOSE := docker compose --env-file $(PROCESSING_ENV) -f compose.pro
 .PHONY: pull-control init-control up-control down-control logs-control status-control up-control-access
 .PHONY: pull-processing up-processing down-processing logs-processing status-processing
 .PHONY: prune-airflow-tasks prune-airflow-tasks-execute
+.PHONY: resource-manager-create resource-manager-update
 
 # Data node: Redpanda and SeaweedFS
 pull-data:
@@ -47,6 +48,11 @@ prune-airflow-tasks:
 	scripts/prune_airflow_task_containers.sh --older-than-hours $${VN_NEWS_TASK_CONTAINER_RETENTION_HOURS:-24}
 prune-airflow-tasks-execute:
 	scripts/prune_airflow_task_containers.sh --older-than-hours $${VN_NEWS_TASK_CONTAINER_RETENTION_HOURS:-24} --execute
+
+resource-manager-create:
+	scripts/resource_manager_stack.sh create
+resource-manager-update:
+	scripts/resource_manager_stack.sh update
 
 # Processing node: long-running consumers
 pull-processing:

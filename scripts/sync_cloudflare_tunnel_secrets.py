@@ -3,10 +3,12 @@ from __future__ import annotations
 import argparse
 import base64
 import json
-import re
+import os
 import subprocess
 import tempfile
 from pathlib import Path
+
+from runtime_secret_tfvars import merge_runtime_secret_ocids
 
 
 SECRET_NAMES = {
@@ -89,7 +91,8 @@ def current_secret_content(oci_bin: str, secret_id: str) -> str:
 
 def write_json_temp(payload: dict) -> str:
     fd, path = tempfile.mkstemp(prefix="vn-news-cloudflare-secret-", suffix=".json")
-    with open(fd, "w", encoding="utf-8") as file:
+    os.fchmod(fd, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as file:
         json.dump(payload, file, separators=(",", ":"))
         file.write("\n")
     return path
@@ -172,49 +175,11 @@ def update_secret(oci_bin: str, secret_id: str, content: str, dry_run: bool) -> 
     )
 
 
-def existing_runtime_secret_ocids(tfvars_path: Path) -> dict[str, list[str]]:
-    if not tfvars_path.exists():
-        return {"data": [], "control": [], "processing": []}
-    text = tfvars_path.read_text(encoding="utf-8")
-    match = re.search(r"(?ms)^runtime_secret_ocids\s*=\s*\{(.*?)^\}", text)
-    roles = {"data": [], "control": [], "processing": []}
-    if not match:
-        return roles
-    block = match.group(1)
-    for role in roles:
-        role_match = re.search(rf"(?ms)^\s*{role}\s*=\s*\[(.*?)\]", block)
-        if role_match:
-            roles[role] = re.findall(
-                r'"(ocid1\.vaultsecret\.[^"]+)"', role_match.group(1)
-            )
-    return roles
-
-
-def render_runtime_secret_ocids(roles: dict[str, list[str]]) -> str:
-    lines = ["runtime_secret_ocids = {"]
-    for role in ("data", "control", "processing"):
-        lines.append(f"  {role} = [")
-        for secret_id in roles.get(role, []):
-            lines.append(f'    "{secret_id}",')
-        lines.append("  ]")
-    lines.append("}")
-    return "\n".join(lines)
-
-
 def update_oci_tfvars(tfvars_path: Path, secret_ids_by_role: dict[str, str]) -> None:
-    roles = existing_runtime_secret_ocids(tfvars_path)
-    for role, secret_id in secret_ids_by_role.items():
-        if secret_id not in roles[role]:
-            roles[role].append(secret_id)
-    replacement = render_runtime_secret_ocids(roles)
-
-    text = tfvars_path.read_text(encoding="utf-8") if tfvars_path.exists() else ""
-    pattern = r"(?ms)^runtime_secret_ocids\s*=\s*\{.*?^\}"
-    if re.search(pattern, text):
-        updated = re.sub(pattern, replacement, text)
-    else:
-        updated = text.rstrip() + "\n\n" + replacement + "\n"
-    tfvars_path.write_text(updated, encoding="utf-8")
+    merge_runtime_secret_ocids(
+        tfvars_path,
+        {role: [secret_id] for role, secret_id in secret_ids_by_role.items()},
+    )
 
 
 def main() -> int:

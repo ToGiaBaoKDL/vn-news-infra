@@ -11,6 +11,19 @@ cloudflared_gid="${VN_NEWS_CLOUDFLARED_GID:-65532}"
 host_group="${VN_NEWS_HOST_SECRET_GROUP:-vn-news}"
 export PYTHONWARNINGS="${PYTHONWARNINGS:-ignore::FutureWarning}"
 
+managed_secret_files=(
+  airflow-admin-password
+  airflow-api-jwt-secret
+  airflow-db-password
+  airflow-fernet-key
+  cloudflare-control-tunnel-token
+  cloudflare-data-tunnel-token
+  curated-writer-s3-credentials
+  ingestion-s3-credentials
+  seaweedfs-s3-config.json
+  storage-admin-s3-credentials
+)
+
 require_oci_cli() {
   if ! command -v "$oci_bin" >/dev/null 2>&1; then
     echo "OCI CLI not found. Install OCI CLI or set OCI_BIN before deployment." >&2
@@ -36,6 +49,10 @@ write_secret_file() {
 
   if [[ -z "$secret_id" ]]; then
     echo "Missing required environment variable: $env_name" >&2
+    exit 1
+  fi
+  if [[ -e "$target_path" && ! -f "$target_path" && ! -L "$target_path" ]]; then
+    echo "Refusing to replace non-file runtime secret path: $target_path" >&2
     exit 1
   fi
 
@@ -64,10 +81,10 @@ materialize_role() {
         seaweedfs-s3-config.json \
         0400 \
         "${VN_NEWS_SEAWEEDFS_UID:-1000}:${VN_NEWS_SEAWEEDFS_GID:-1000}"
+      write_secret_file VN_NEWS_STORAGE_ADMIN_S3_CREDENTIALS_SECRET_OCID storage-admin-s3-credentials 0440 "root:$host_group"
       write_secret_file VN_NEWS_CLOUDFLARE_DATA_TUNNEL_TOKEN_SECRET_OCID cloudflare-data-tunnel-token 0400 "$cloudflared_uid:$cloudflared_gid"
       ;;
     control)
-      write_secret_file VN_NEWS_STORAGE_ADMIN_S3_CREDENTIALS_SECRET_OCID storage-admin-s3-credentials 0440 "root:$host_group"
       write_secret_file VN_NEWS_INGESTION_S3_CREDENTIALS_SECRET_OCID ingestion-s3-credentials 0440 "$app_uid:$host_group"
       write_secret_file VN_NEWS_AIRFLOW_DB_PASSWORD_SECRET_OCID airflow-db-password 0440 root:root
       write_secret_file VN_NEWS_AIRFLOW_API_JWT_SECRET_OCID airflow-api-jwt-secret 0440 root:root
@@ -77,6 +94,7 @@ materialize_role() {
       ;;
     processing)
       write_secret_file VN_NEWS_INGESTION_S3_CREDENTIALS_SECRET_OCID ingestion-s3-credentials 0440 "$app_uid:$host_group"
+      write_secret_file VN_NEWS_CURATED_WRITER_S3_CREDENTIALS_SECRET_OCID curated-writer-s3-credentials 0440 "$app_uid:$host_group"
       ;;
     *)
       echo "Unknown role: $role" >&2
@@ -85,8 +103,58 @@ materialize_role() {
   esac
 }
 
+allowed_secret_files() {
+  case "$role" in
+    data)
+      printf '%s\n' \
+        seaweedfs-s3-config.json \
+        storage-admin-s3-credentials \
+        cloudflare-data-tunnel-token
+      ;;
+    control)
+      printf '%s\n' \
+        ingestion-s3-credentials \
+        airflow-db-password \
+        airflow-api-jwt-secret \
+        airflow-fernet-key \
+        airflow-admin-password \
+        cloudflare-control-tunnel-token
+      ;;
+    processing)
+      printf '%s\n' \
+        ingestion-s3-credentials \
+        curated-writer-s3-credentials
+      ;;
+    *)
+      echo "Unknown role: $role" >&2
+      exit 1
+      ;;
+  esac
+}
+
+cleanup_stale_managed_secrets() {
+  local managed_file managed_path
+  local allowed="$(allowed_secret_files)"
+
+  for managed_file in "${managed_secret_files[@]}"; do
+    if grep -Fxq "$managed_file" <<<"$allowed"; then
+      continue
+    fi
+    managed_path="$secrets_dir/$managed_file"
+    if [[ -e "$managed_path" ]]; then
+      if [[ ! -f "$managed_path" && ! -L "$managed_path" ]]; then
+        echo "Refusing to remove non-file runtime secret path: $managed_path" >&2
+        exit 1
+      fi
+      rm -f "$managed_path"
+      echo "removed stale runtime secret for role $role: $managed_file"
+    fi
+  done
+}
+
 require_oci_cli
 install -d -m 0710 -o root -g "$host_group" "$(dirname "$secrets_dir")"
 install -d -m 0710 -o root -g "$host_group" "$secrets_dir"
 materialize_role
+cleanup_stale_managed_secrets
 echo "materialized runtime secrets for role: $role"

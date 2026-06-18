@@ -10,10 +10,12 @@ alarm_notification_email = ""
 
 runtime_secret_ocids = {
   data = [
-    # seaweedfs config and Cloudflare data tunnel token
+    # SeaweedFS config, storage admin S3 credentials, and Cloudflare data tunnel token
   ]
   control = [
-    # Airflow, storage, ingestion, and Cloudflare control tunnel secrets
+    # Airflow, ingestion, and Cloudflare control tunnel secrets
   ]
-  processing = []
+  processing = [
+    # ingestion and curated-writer S3 credentials
+  ]
 }
