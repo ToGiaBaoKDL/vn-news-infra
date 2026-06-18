@@ -10,31 +10,15 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from runtime_secret_tfvars import merge_runtime_secret_ocids
-
-
-SECRET_NAMES = {
-    "seaweedfs_s3_config": "tgb-vn-news-seaweedfs-s3-config",
-    "storage_admin_s3_credentials": "tgb-vn-news-storage-admin-s3-credentials",
-    "ingestion_s3_credentials": "tgb-vn-news-ingestion-s3-credentials",
-    "curated_writer_s3_credentials": "tgb-vn-news-curated-writer-s3-credentials",
-    "airflow_db_password": "tgb-vn-news-airflow-db-password",
-    "airflow_api_jwt_secret": "tgb-vn-news-airflow-api-jwt-secret",
-    "airflow_fernet_key": "tgb-vn-news-airflow-fernet-key",
-    "airflow_admin_password": "tgb-vn-news-airflow-admin-password",
-}
-
-ROLE_SECRET_KEYS = {
-    "data": ("seaweedfs_s3_config", "storage_admin_s3_credentials"),
-    "control": (
-        "ingestion_s3_credentials",
-        "airflow_db_password",
-        "airflow_api_jwt_secret",
-        "airflow_fernet_key",
-        "airflow_admin_password",
-    ),
-    "processing": ("ingestion_s3_credentials", "curated_writer_s3_credentials"),
-}
+from runtime_secret_catalog import (
+    CURATED_WRITER_IDENTITY_NAME,
+    GENERATED_SECRET_KEYS,
+    LEGACY_STORAGE_ADMIN_IDENTITY_NAME,
+    ROLE_SECRET_KEYS,
+    SECRET_NAMES,
+    STORAGE_ADMIN_IDENTITY_NAME,
+)
+from runtime_secret_tfvars import write_runtime_secret_ocids
 
 
 def parse_args() -> argparse.Namespace:
@@ -279,7 +263,9 @@ def runtime_secret_ocids_by_role(
 ) -> dict[str, list[str]]:
     secret_ids_by_role = {}
     for role, secret_keys in ROLE_SECRET_KEYS.items():
-        secret_ids_by_role[role] = [secret_ids_by_key[key] for key in secret_keys]
+        secret_ids_by_role[role] = [
+            secret_ids_by_key[key] for key in secret_keys if key in secret_ids_by_key
+        ]
     return secret_ids_by_role
 
 
@@ -288,88 +274,113 @@ def credentials_from_seaweedfs_identity(identity: dict) -> str:
         credential = identity["credentials"][0]
         return s3_credentials(credential["accessKey"], credential["secretKey"])
     except (KeyError, IndexError, TypeError) as exc:
-        raise SystemExit(
-            "SeaweedFS curated-writer identity is missing credentials."
-        ) from exc
+        name = (
+            identity.get("name", "unknown") if isinstance(identity, dict) else "unknown"
+        )
+        raise SystemExit(f"SeaweedFS identity is missing credentials: {name}") from exc
 
 
-def add_curated_writer_to_existing_secrets(
+def migrate_existing_storage_secrets(
     *,
     args: argparse.Namespace,
     existing_by_name: dict[str, str],
+    missing_names: set[str],
 ) -> dict[str, str]:
     config_secret_id = existing_by_name[SECRET_NAMES["seaweedfs_s3_config"]]
     config = json.loads(current_secret_content(args.oci_bin, config_secret_id))
     identities = config.setdefault("identities", [])
-    curated_identity = next(
+    config_changed = False
+    credentials_to_create: dict[str, str] = {}
+
+    storage_admin_name = SECRET_NAMES["storage_admin_s3_credentials"]
+    storage_admin_identity = next(
         (
             identity
             for identity in identities
-            if identity.get("name") == "vn-news-curated-writer"
+            if identity.get("name")
+            in {STORAGE_ADMIN_IDENTITY_NAME, LEGACY_STORAGE_ADMIN_IDENTITY_NAME}
         ),
         None,
     )
+    if storage_admin_identity is None:
+        raise SystemExit("SeaweedFS storage-admin identity is missing.")
+    if storage_admin_identity.get("name") == LEGACY_STORAGE_ADMIN_IDENTITY_NAME:
+        storage_admin_identity["name"] = STORAGE_ADMIN_IDENTITY_NAME
+        config_changed = True
+    if storage_admin_name in missing_names:
+        credentials_to_create["storage_admin_s3_credentials"] = (
+            credentials_from_seaweedfs_identity(storage_admin_identity)
+        )
 
-    if curated_identity is None:
-        curated_identity, curated_credentials = curated_writer_payload()
-        identities.append(curated_identity)
+    curated_name = SECRET_NAMES["curated_writer_s3_credentials"]
+    if curated_name in missing_names:
+        curated_identity = next(
+            (
+                identity
+                for identity in identities
+                if identity.get("name") == CURATED_WRITER_IDENTITY_NAME
+            ),
+            None,
+        )
+        if curated_identity is None:
+            curated_identity, curated_credentials = curated_writer_payload()
+            identities.append(curated_identity)
+            config_changed = True
+        else:
+            curated_credentials = credentials_from_seaweedfs_identity(curated_identity)
+        credentials_to_create["curated_writer_s3_credentials"] = curated_credentials
+
+    if config_changed:
         update_secret_content(
             oci_bin=args.oci_bin,
             secret_id=config_secret_id,
             content=json.dumps(config, separators=(",", ":")),
-            content_name="curated-writer-added",
+            content_name="storage-role-migration",
             dry_run=args.dry_run,
         )
-        print("updated SeaweedFS S3 config with vn-news-curated-writer")
-    else:
-        curated_credentials = credentials_from_seaweedfs_identity(curated_identity)
-        print("SeaweedFS S3 config already contains vn-news-curated-writer")
+        print("updated SeaweedFS S3 config identities")
 
-    curated_secret_id = create_secret(
-        oci_bin=args.oci_bin,
-        compartment_id=args.compartment_id,
-        vault_id=args.vault_id,
-        key_id=args.key_id,
-        name=SECRET_NAMES["curated_writer_s3_credentials"],
-        content=curated_credentials,
-        dry_run=args.dry_run,
-    )
-    print(
-        f"created {SECRET_NAMES['curated_writer_s3_credentials']}: {curated_secret_id}"
-    )
+    created_secret_ids: dict[str, str] = {}
+    for key, content in credentials_to_create.items():
+        name = SECRET_NAMES[key]
+        created_secret_ids[key] = create_secret(
+            oci_bin=args.oci_bin,
+            compartment_id=args.compartment_id,
+            vault_id=args.vault_id,
+            key_id=args.key_id,
+            name=name,
+            content=content,
+            dry_run=args.dry_run,
+        )
+        print(f"created {name}")
 
     secret_ids_by_key = {
         key: existing_by_name[name]
         for key, name in SECRET_NAMES.items()
-        if key != "curated_writer_s3_credentials"
+        if name in existing_by_name and key not in created_secret_ids
     }
-    secret_ids_by_key["curated_writer_s3_credentials"] = curated_secret_id
+    secret_ids_by_key.update(created_secret_ids)
     return secret_ids_by_key
 
 
 def main() -> int:
     args = parse_args()
     tfvars_path = Path(args.tfvars)
-    required_names = set(SECRET_NAMES.values())
+    required_names = {SECRET_NAMES[key] for key in GENERATED_SECRET_KEYS}
 
     existing_by_name = list_existing_secrets(
         args.oci_bin, args.compartment_id, args.vault_id
     )
     existing_required = required_names & set(existing_by_name)
     missing_names = required_names - existing_required
-    if existing_required == required_names:
-        secret_ids_by_key = {
-            key: existing_by_name[name] for key, name in SECRET_NAMES.items()
-        }
-        print(
-            "All required runtime secrets already exist; updating tfvars with existing OCIDs."
-        )
-    elif existing_required and missing_names == {
-        SECRET_NAMES["curated_writer_s3_credentials"]
+    if existing_required and missing_names <= {
+        SECRET_NAMES["storage_admin_s3_credentials"],
+        SECRET_NAMES["curated_writer_s3_credentials"],
     }:
-        secret_ids_by_key = add_curated_writer_to_existing_secrets(
+        secret_ids_by_key = migrate_existing_storage_secrets(
             args=args,
             existing_by_name=existing_by_name,
+            missing_names=missing_names,
         )
     elif existing_required:
         missing = sorted(missing_names)
@@ -381,7 +392,8 @@ def main() -> int:
     else:
         payloads = secret_payloads()
         secret_ids_by_key = {}
-        for key, name in SECRET_NAMES.items():
+        for key in GENERATED_SECRET_KEYS:
+            name = SECRET_NAMES[key]
             secret_id = create_secret(
                 oci_bin=args.oci_bin,
                 compartment_id=args.compartment_id,
@@ -395,8 +407,9 @@ def main() -> int:
             print(f"created {name}: {secret_id}")
 
     if not args.dry_run:
-        merge_runtime_secret_ocids(
-            tfvars_path, runtime_secret_ocids_by_role(secret_ids_by_key)
+        write_runtime_secret_ocids(
+            tfvars_path,
+            runtime_secret_ocids_by_role(secret_ids_by_key),
         )
         print(f"updated {tfvars_path} with runtime_secret_ocids")
     return 0

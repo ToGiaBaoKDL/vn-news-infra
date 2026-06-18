@@ -8,12 +8,13 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from runtime_secret_catalog import SECRET_NAMES as RUNTIME_SECRET_NAMES
 from runtime_secret_tfvars import merge_runtime_secret_ocids
 
 
 SECRET_NAMES = {
-    "control": "tgb-vn-news-cloudflare-control-tunnel-token",
-    "data": "tgb-vn-news-cloudflare-data-tunnel-token",
+    "control": RUNTIME_SECRET_NAMES["cloudflare_control_tunnel_token"],
+    "data": RUNTIME_SECRET_NAMES["cloudflare_data_tunnel_token"],
 }
 
 
