@@ -1,6 +1,0 @@
-name: vn-news-intelligence
-
-include:
-  - redpanda/compose.yaml
-  - seaweedfs/compose.yaml
-  - airflow/compose.yaml

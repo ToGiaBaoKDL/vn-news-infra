@@ -2,15 +2,19 @@
 set -euo pipefail
 
 mount_path="${VN_NEWS_DATA_MOUNT_PATH:-/srv/vn-news-data}"
-oci_auth="${VN_NEWS_OCI_AUTH:-instance_principal}"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export PYTHONWARNINGS="${PYTHONWARNINGS:-ignore::FutureWarning}"
 
-for command_name in curl df mountpoint oci python3; do
-  command -v "$command_name" >/dev/null 2>&1 || {
-    echo "Missing required command: $command_name" >&2
-    exit 1
-  }
-done
+# shellcheck source=scripts/lib/common.sh
+source "$script_dir/../lib/common.sh"
+# shellcheck source=scripts/lib/oci.sh
+source "$script_dir/../lib/oci.sh"
+
+require_command curl
+require_command df
+require_command mountpoint
+require_command "$oci_bin"
+require_command python3
 mountpoint -q "$mount_path" || {
   echo "Data mount is unavailable: $mount_path" >&2
   exit 1
@@ -57,8 +61,7 @@ Path(sys.argv[2]).write_text(json.dumps(payload, separators=(",", ":")), encodin
 PY
 region="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["region"])' "$metadata_file")"
 
-oci monitoring metric-data post \
-  --auth "$oci_auth" \
+oci_command monitoring metric-data post \
   --endpoint "https://telemetry-ingestion.${region}.oraclecloud.com" \
   --metric-data "file://$metric_file" \
   --batch-atomicity ATOMIC >/dev/null

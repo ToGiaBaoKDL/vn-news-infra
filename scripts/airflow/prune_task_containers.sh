@@ -3,10 +3,14 @@ set -euo pipefail
 
 retention_hours="${VN_NEWS_TASK_CONTAINER_RETENTION_HOURS:-24}"
 execute=0
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=scripts/lib/common.sh
+source "$script_dir/../lib/common.sh"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/prune_airflow_task_containers.sh [options]
+Usage: scripts/airflow/prune_task_containers.sh [options]
 
 Options:
   --older-than-hours HOURS  Remove stopped task containers older than HOURS.
@@ -47,18 +51,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if ! [[ "$retention_hours" =~ ^[0-9]+$ ]] || [[ "$retention_hours" -lt 1 ]]; then
-  echo "--older-than-hours must be a positive integer" >&2
-  exit 2
-fi
-
-require_command() {
-  local command_name="$1"
-  if ! command -v "$command_name" >/dev/null 2>&1; then
-    echo "$command_name is required" >&2
-    exit 1
-  fi
-}
+require_positive_integer "$retention_hours" "--older-than-hours"
 
 candidate_ids() {
   local status="$1"

@@ -70,18 +70,21 @@ locals {
     tgb-data-1 = {
       role           = "data"
       hostname_label = "data1"
+      private_ip     = "10.0.10.16"
       ocpus          = 1
       memory_gb      = 6
     }
     tgb-control-1 = {
       role           = "control"
       hostname_label = "control1"
+      private_ip     = "10.0.10.221"
       ocpus          = 1
       memory_gb      = 6
     }
     tgb-processing-1 = {
       role           = "processing"
       hostname_label = "processing1"
+      private_ip     = "10.0.10.50"
       ocpus          = 2
       memory_gb      = 12
     }
@@ -101,16 +104,41 @@ locals {
     redpanda_kafka           = 19092
     redpanda_schema_registry = 18081
     seaweedfs_s3             = 8333
+    polaris_catalog          = 18181
+  }
+
+  spark_ingress_rules = {
+    control_cluster = {
+      role = "control"
+      min  = 17077
+      max  = 17079
+    }
+    control_master_ui = {
+      role = "control"
+      min  = 18080
+      max  = 18080
+    }
+    processing_worker = {
+      role = "processing"
+      min  = 17078
+      max  = 17078
+    }
   }
 
   runtime_secret_ocids_by_role = {
-    for role in keys(local.roles) : role => lookup(var.runtime_secret_ocids, role, [])
+    for role in keys(local.roles) : role => lookup(var.runtime_secret_ocids, role, {})
   }
 
   runtime_secret_roles = {
-    for role, secret_ocids in local.runtime_secret_ocids_by_role : role => secret_ocids
-    if length(secret_ocids) > 0
+    for role, secrets in local.runtime_secret_ocids_by_role : role => values(secrets)
+    if length(secrets) > 0
   }
+
+  polaris_client_credentials_secret_ocid = lookup(
+    local.runtime_secret_ocids_by_role["data"],
+    "polaris_client_credentials",
+    "",
+  )
 
   guardrails = {
     instance_count              = length(local.nodes)

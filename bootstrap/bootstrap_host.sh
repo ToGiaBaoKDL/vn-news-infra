@@ -3,14 +3,21 @@ set -euo pipefail
 
 role="${1:-}"
 vcn_cidr="${VN_NEWS_VCN_CIDR:-10.0.0.0/16}"
+ssh_ingress_cidr="${VN_NEWS_SSH_INGRESS_CIDR:?VN_NEWS_SSH_INGRESS_CIDR is required}"
 deploy_user="${SUDO_USER:-ubuntu}"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# shellcheck source=bootstrap/lib/common.sh
 source "$script_dir/lib/common.sh"
+# shellcheck source=bootstrap/lib/packages.sh
 source "$script_dir/lib/packages.sh"
+# shellcheck source=bootstrap/lib/security.sh
 source "$script_dir/lib/security.sh"
+# shellcheck source=bootstrap/lib/runtime.sh
 source "$script_dir/lib/runtime.sh"
+# shellcheck source=bootstrap/lib/volumes.sh
 source "$script_dir/lib/volumes.sh"
+# shellcheck source=bootstrap/lib/roles.sh
 source "$script_dir/lib/roles.sh"
 
 configure_role_dirs() {
@@ -26,7 +33,9 @@ main() {
   require_root
   install_base_packages
   install_oci_cli
-  install_uv
+  if [[ "$role" == "data" ]]; then
+    install_uv
+  fi
   install_docker
   configure_users
   configure_ssh

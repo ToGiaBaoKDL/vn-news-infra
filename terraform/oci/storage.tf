@@ -50,6 +50,7 @@ resource "oci_objectstorage_object_lifecycle_policy" "recovery" {
       inclusion_patterns = [
         "airflow-db/*",
         "config/*",
+        "polaris-db/*",
         "redpanda-metadata/*",
       ]
     }

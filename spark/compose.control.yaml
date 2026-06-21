@@ -1,0 +1,53 @@
+services:
+  spark-master:
+    image: ${VN_NEWS_SPARK_IMAGE:?set VN_NEWS_SPARK_IMAGE}
+    restart: unless-stopped
+    init: true
+    network_mode: host
+    user: "${VN_NEWS_SPARK_UID:-185}:${VN_NEWS_SPARK_GID:-0}"
+    read_only: true
+    environment:
+      SPARK_DAEMON_MEMORY: 512m
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_MASTER_OPTS: >-
+        -Dspark.authenticate=true
+        -Dspark.authenticate.secret.file=/run/secrets/spark-rpc-auth-secret
+        -Dspark.deploy.defaultCores=1
+        -Dspark.master.rest.enabled=false
+        -Dspark.master.ui.decommission.allow.mode=DENY
+    command:
+      - /opt/spark/sbin/start-master.sh
+      - --host
+      - ${VN_NEWS_CONTROL_PRIVATE_IP:?set VN_NEWS_CONTROL_PRIVATE_IP}
+      - --port
+      - ${VN_NEWS_SPARK_MASTER_PORT:-17077}
+      - --webui-port
+      - ${VN_NEWS_SPARK_MASTER_UI_PORT:-18080}
+    secrets:
+      - spark-rpc-auth-secret
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    cpus: 0.50
+    mem_limit: 768m
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bash -ec 'exec 3<>/dev/tcp/${VN_NEWS_CONTROL_PRIVATE_IP:?set VN_NEWS_CONTROL_PRIVATE_IP}/${VN_NEWS_SPARK_MASTER_PORT:-17077}'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    labels:
+      com.tgbao.vn-news.component: spark
+      com.tgbao.vn-news.managed-by: docker-compose
+      com.tgbao.vn-news.role: master
+
+secrets:
+  spark-rpc-auth-secret:
+    file: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}/spark-rpc-auth-secret

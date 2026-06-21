@@ -16,6 +16,7 @@ resource "oci_core_instance" "node" {
     assign_public_ip = "true"
     display_name     = "${each.key}-primary-vnic"
     hostname_label   = each.value.hostname_label
+    private_ip       = each.value.private_ip
     nsg_ids          = [oci_core_network_security_group.role[each.value.role].id]
     subnet_id        = oci_core_subnet.public.id
   }

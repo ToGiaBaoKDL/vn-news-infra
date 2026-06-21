@@ -61,19 +61,18 @@ variable "ssh_authorized_key" {
 }
 
 variable "ssh_ingress_cidr" {
-  description = "CIDR allowed to SSH into nodes. Use 0.0.0.0/0 for first rollout, then restrict."
+  description = "Trusted IPv4 CIDR allowed to SSH into nodes."
   type        = string
-  default     = "0.0.0.0/0"
 
   validation {
-    condition     = can(cidrnetmask(var.ssh_ingress_cidr))
-    error_message = "ssh_ingress_cidr must be a valid IPv4 CIDR."
+    condition     = can(cidrnetmask(var.ssh_ingress_cidr)) && var.ssh_ingress_cidr != "0.0.0.0/0"
+    error_message = "ssh_ingress_cidr must be a restricted IPv4 CIDR, not 0.0.0.0/0."
   }
 }
 
 variable "runtime_secret_ocids" {
-  description = "Per-role OCI Vault secret OCIDs. Values are added after secrets are created outside Terraform."
-  type        = map(list(string))
+  description = "Named OCI Vault secret OCIDs by runtime role. Values are generated outside Terraform."
+  type        = map(map(string))
   default     = {}
 
   validation {
@@ -83,8 +82,8 @@ variable "runtime_secret_ocids" {
 
   validation {
     condition = alltrue(flatten([
-      for secret_ocids in values(var.runtime_secret_ocids) : [
-        for secret_ocid in secret_ocids : startswith(secret_ocid, "ocid1.vaultsecret.")
+      for secrets in values(var.runtime_secret_ocids) : [
+        for secret_ocid in values(secrets) : startswith(secret_ocid, "ocid1.vaultsecret.")
       ]
     ]))
     error_message = "runtime_secret_ocids values must be OCI Vault secret OCIDs."

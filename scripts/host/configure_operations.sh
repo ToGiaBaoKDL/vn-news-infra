@@ -4,24 +4,22 @@ set -euo pipefail
 role="${1:?role is required: data or control}"
 deploy_root="${2:?deploy root is required}"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+recovery_dir="$(cd "$script_dir/../recovery" && pwd)"
+shared_lib_dir="$(cd "$script_dir/../lib" && pwd)"
 install_root="/usr/local/lib/vn-news"
 
-if [[ "$(id -u)" -ne 0 ]]; then
-  echo "Run as root." >&2
-  exit 1
-fi
-case "$role" in
-  data | control) ;;
-  *)
-    echo "Unsupported operations role: $role" >&2
-    exit 2
-    ;;
-esac
+# shellcheck source=scripts/lib/common.sh
+source "$shared_lib_dir/common.sh"
 
-install -d -m 0755 "$install_root"
-for script_name in export_recovery.sh publish_host_metrics.sh verify_recovery_restore.sh; do
-  install -m 0755 "$script_dir/$script_name" "$install_root/$script_name"
-done
+require_root
+require_role "$role" data control
+
+install -d -m 0755 "$install_root/host" "$install_root/lib" "$install_root/recovery"
+install -m 0755 "$recovery_dir/export.sh" "$install_root/recovery/export.sh"
+install -m 0755 "$recovery_dir/verify.sh" "$install_root/recovery/verify.sh"
+install -m 0755 "$script_dir/publish_metrics.sh" "$install_root/host/publish_metrics.sh"
+install -m 0644 "$shared_lib_dir/common.sh" "$install_root/lib/common.sh"
+install -m 0644 "$shared_lib_dir/oci.sh" "$install_root/lib/oci.sh"
 
 cat >/etc/systemd/system/vn-news-recovery-export@.service <<EOF
 [Unit]
@@ -32,7 +30,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 Environment=VN_NEWS_DEPLOY_ROOT=$deploy_root
-ExecStart=$install_root/export_recovery.sh %i
+ExecStart=$install_root/recovery/export.sh %i
 TimeoutStartSec=30m
 EOF
 
@@ -59,7 +57,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=$install_root/publish_host_metrics.sh
+ExecStart=$install_root/host/publish_metrics.sh
 TimeoutStartSec=2m
 EOF
 

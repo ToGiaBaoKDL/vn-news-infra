@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154
 
 configure_runtime_dirs() {
   log "Creating runtime directories"

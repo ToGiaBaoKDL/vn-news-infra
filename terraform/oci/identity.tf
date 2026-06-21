@@ -22,6 +22,26 @@ resource "oci_identity_policy" "runtime_secret_read" {
   ]
 }
 
+resource "oci_identity_policy" "polaris_runtime_secret_update" {
+  count = local.polaris_client_credentials_secret_ocid == "" ? 0 : 1
+
+  compartment_id = var.tenancy_ocid
+  name           = "${local.resource_prefix}-data-polaris-runtime-secret-update"
+  description    = "Allow data node to update only the Polaris runtime client credential secret."
+  freeform_tags  = merge(local.common_tags, { role = "data" })
+
+  statements = [
+    "Allow dynamic-group ${oci_identity_dynamic_group.role["data"].name} to manage secrets in compartment id ${var.compartment_ocid} where target.secret.id = '${local.polaris_client_credentials_secret_ocid}'",
+  ]
+
+  lifecycle {
+    precondition {
+      condition     = contains(values(local.runtime_secret_ocids_by_role["data"]), local.polaris_client_credentials_secret_ocid)
+      error_message = "Polaris client credentials must be readable by the data role before rotation."
+    }
+  }
+}
+
 resource "oci_identity_policy" "recovery_object_access" {
   for_each = toset(["data", "control"])
 

@@ -1,44 +1,33 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-action="${1:?usage: scripts/resource_manager_stack.sh create|update}"
+action="${1:?usage: scripts/resource_manager/stack.sh create|update}"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/../.." && pwd)"
 local_resource_manager_env="${VN_NEWS_RESOURCE_MANAGER_ENV_FILE:-.resource-manager.env}"
 
-if [[ -f "$local_resource_manager_env" ]]; then
-  set -a
-  source "$local_resource_manager_env"
-  set +a
-fi
+# shellcheck source=scripts/lib/common.sh
+source "$script_dir/../lib/common.sh"
+
+load_optional_env_file "$local_resource_manager_env"
 
 stack_name="${OCI_STACK_DISPLAY_NAME:-tgb-vn-news-prod}"
 repo_url="${VN_NEWS_INFRA_REPO_URL:-https://github.com/ToGiaBaoKDL/vn-news-infra.git}"
 repo_branch="${VN_NEWS_INFRA_BRANCH:-main}"
 working_dir="${VN_NEWS_TERRAFORM_WORKING_DIR:-terraform/oci}"
 terraform_version="${OCI_TERRAFORM_VERSION:-1.5.x}"
-tfvars_file="${VN_NEWS_TFVARS_FILE:-terraform/oci/terraform.tfvars}"
+tfvars_file="${VN_NEWS_TFVARS_FILE:-terraform/oci/terraform.tfvars.json}"
 oci_bin="${OCI_BIN:-oci}"
 
-require_env() {
-  local name="$1"
-  if [[ -z "${!name:-}" ]]; then
-    echo "Missing required environment variable: $name" >&2
-    exit 1
-  fi
-}
-
 require_resource_manager_context() {
-  require_env OCI_RM_CONFIG_SOURCE_PROVIDER_OCID
+  require_env_var OCI_RM_CONFIG_SOURCE_PROVIDER_OCID
   if [[ "$action" == "update" ]]; then
-    require_env OCI_RM_STACK_OCID
+    require_env_var OCI_RM_STACK_OCID
   fi
-  if ! command -v "$oci_bin" >/dev/null 2>&1; then
-    echo "OCI CLI not found. Set OCI_BIN=/path/to/oci or add oci to PATH." >&2
-    exit 1
-  fi
+  require_command "$oci_bin" "OCI CLI not found. Set OCI_BIN=/path/to/oci or add oci to PATH."
   if [[ ! -f "$tfvars_file" ]]; then
     echo "Terraform variables file not found: ${tfvars_file}" >&2
-    echo "Create it from terraform/oci/terraform.tfvars.example first." >&2
+    echo "Create it from terraform/oci/terraform.tfvars.json.example first." >&2
     exit 1
   fi
 }
@@ -57,10 +46,13 @@ render_variables() {
   local variables_json="$1"
   local compartment_file="$2"
 
-  python3 "$script_dir/render_resource_manager_variables.py" \
-    --tfvars "$tfvars_file" \
-    --variables-output "$variables_json" \
-    --compartment-output "$compartment_file"
+  (
+    cd "$repo_root"
+    python3 -m scripts.resource_manager.render_variables \
+      --tfvars "$tfvars_file" \
+      --variables-output "$variables_json" \
+      --compartment-output "$compartment_file"
+  )
 }
 
 case "$action" in

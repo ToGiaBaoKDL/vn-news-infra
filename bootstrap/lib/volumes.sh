@@ -41,6 +41,8 @@ mount_data_volume() {
   local redpanda_gid="${VN_NEWS_REDPANDA_DATA_GID:-101}"
   local seaweedfs_uid="${VN_NEWS_SEAWEEDFS_UID:-1000}"
   local seaweedfs_gid="${VN_NEWS_SEAWEEDFS_GID:-1000}"
+  local polaris_db_uid="${VN_NEWS_POLARIS_DB_UID:-999}"
+  local polaris_db_gid="${VN_NEWS_POLARIS_DB_GID:-999}"
 
   log "Configuring data volume"
   ensure_dir "$mount_point" 0775 root:vn-news
@@ -81,4 +83,7 @@ mount_data_volume() {
   ensure_dir "$mount_point/seaweedfs" 0775 root:vn-news
   chown -R "$seaweedfs_uid:$seaweedfs_gid" "$mount_point/seaweedfs"
   chmod 0750 "$mount_point/seaweedfs"
+  ensure_dir "$mount_point/polaris-postgres" 0775 root:vn-news
+  chown -R "$polaris_db_uid:$polaris_db_gid" "$mount_point/polaris-postgres"
+  chmod 0750 "$mount_point/polaris-postgres"
 }

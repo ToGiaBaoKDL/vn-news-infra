@@ -1,0 +1,64 @@
+services:
+  spark-worker:
+    image: ${VN_NEWS_SPARK_IMAGE:?set VN_NEWS_SPARK_IMAGE}
+    restart: unless-stopped
+    init: true
+    network_mode: host
+    user: "${VN_NEWS_SPARK_UID:-185}:${VN_NEWS_SPARK_GID:-0}"
+    read_only: true
+    environment:
+      SPARK_DAEMON_MEMORY: 512m
+      SPARK_LOCAL_DIRS: /var/lib/spark/local
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_WORKER_OPTS: >-
+        -Dspark.authenticate=true
+        -Dspark.authenticate.secret.file=/run/secrets/spark-rpc-auth-secret
+        -Dspark.worker.cleanup.enabled=true
+        -Dspark.worker.cleanup.interval=1800
+        -Dspark.worker.cleanup.appDataTtl=86400
+    command:
+      - /opt/spark/sbin/start-worker.sh
+      - ${VN_NEWS_SPARK_MASTER_URL:?set VN_NEWS_SPARK_MASTER_URL}
+      - --host
+      - ${VN_NEWS_PROCESSING_PRIVATE_IP:?set VN_NEWS_PROCESSING_PRIVATE_IP}
+      - --port
+      - ${VN_NEWS_SPARK_WORKER_PORT:-17078}
+      - --webui-port
+      - ${VN_NEWS_SPARK_WORKER_UI_PORT:-18081}
+      - --cores
+      - ${VN_NEWS_SPARK_WORKER_CORES:-1}
+      - --memory
+      - ${VN_NEWS_SPARK_WORKER_MEMORY:-6g}
+      - --work-dir
+      - /opt/spark/work
+    secrets:
+      - spark-rpc-auth-secret
+    volumes:
+      - ${VN_NEWS_SPARK_WORKER_DIR:-/srv/vn-news-processing/spark/work}:/opt/spark/work
+      - ${VN_NEWS_SPARK_LOCAL_DIR:-/srv/vn-news-processing/spark/local}:/var/lib/spark/local
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    cpus: 1.50
+    mem_limit: 8g
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bash -ec 'exec 3<>/dev/tcp/${VN_NEWS_PROCESSING_PRIVATE_IP:?set VN_NEWS_PROCESSING_PRIVATE_IP}/${VN_NEWS_SPARK_WORKER_PORT:-17078}'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    labels:
+      com.tgbao.vn-news.component: spark
+      com.tgbao.vn-news.managed-by: docker-compose
+      com.tgbao.vn-news.role: worker
+
+secrets:
+  spark-rpc-auth-secret:
+    file: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}/spark-rpc-auth-secret

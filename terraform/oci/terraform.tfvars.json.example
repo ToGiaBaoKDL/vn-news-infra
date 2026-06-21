@@ -1,0 +1,15 @@
+{
+  "alarm_notification_email": "",
+  "arm64_ubuntu_image_ocid": "ocid1.image.oc1.ap-singapore-1.replace-with-arm64-ubuntu-image-ocid",
+  "availability_domain": "auto",
+  "compartment_ocid": "ocid1.compartment.oc1..replace-with-compartment-ocid",
+  "region": "ap-singapore-1",
+  "runtime_secret_ocids": {
+    "control": {},
+    "data": {},
+    "processing": {}
+  },
+  "ssh_authorized_key": "ssh-ed25519 replace-with-public-key",
+  "ssh_ingress_cidr": "replace-with-trusted-ip/32",
+  "tenancy_ocid": "ocid1.tenancy.oc1..replace-with-tenancy-ocid"
+}

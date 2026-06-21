@@ -2,35 +2,26 @@
 set -euo pipefail
 
 role="${1:?role is required: data or control}"
-env_file="${VN_NEWS_ENV_FILE:-/etc/vn-news/env/${role}.env}"
-oci_auth="${VN_NEWS_OCI_AUTH:-instance_principal}"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export PYTHONWARNINGS="${PYTHONWARNINGS:-ignore::FutureWarning}"
 
-case "$role" in
-  data | control) ;;
-  *)
-    echo "Unsupported restore-verification role: $role" >&2
-    exit 2
-    ;;
-esac
+# shellcheck source=scripts/lib/common.sh
+source "$script_dir/../lib/common.sh"
+# shellcheck source=scripts/lib/oci.sh
+source "$script_dir/../lib/oci.sh"
 
-for command_name in docker grep oci seq sleep tar; do
-  command -v "$command_name" >/dev/null 2>&1 || {
-    echo "Missing required command: $command_name" >&2
-    exit 1
-  }
-done
-[[ -r "$env_file" ]] || {
-  echo "Missing role configuration: $env_file" >&2
-  exit 1
-}
-
-set -a
-source "$env_file"
-set +a
+require_role "$role" data control
+require_command docker
+require_command grep
+require_command "$oci_bin"
+require_command seq
+require_command sleep
+require_command tar
+env_file="$(role_env_path "$role")"
+load_env_file "$env_file"
 
 bucket="${VN_NEWS_RECOVERY_BUCKET:?VN_NEWS_RECOVERY_BUCKET is required}"
-namespace="$(oci os ns get --auth "$oci_auth" --query data --raw-output)"
+namespace="$(oci_command os ns get --query data --raw-output)"
 tmp_dir="$(mktemp -d)"
 restore_container=""
 
@@ -46,8 +37,7 @@ trap cleanup EXIT
 latest_object() {
   local prefix="$1"
 
-  oci os object list \
-    --auth "$oci_auth" \
+  oci_command os object list \
     --namespace-name "$namespace" \
     --bucket-name "$bucket" \
     --prefix "$prefix/" \
@@ -66,8 +56,7 @@ download_latest() {
     exit 1
   }
   target="$tmp_dir/$(basename "$object_name")"
-  oci os object get \
-    --auth "$oci_auth" \
+  oci_command os object get \
     --namespace-name "$namespace" \
     --bucket-name "$bucket" \
     --name "$object_name" \
@@ -75,34 +64,22 @@ download_latest() {
   printf '%s\n' "$target"
 }
 
-verify_data() {
-  local metadata_archive listing
+verify_postgres_dump() {
+  local dump_file="$1"
+  local image="$2"
+  local db_name="$3"
+  local db_user="$4"
+  local label="$5"
+  local restored_tables
 
-  metadata_archive="$(download_latest redpanda-metadata)"
-  listing="$tmp_dir/redpanda-metadata.list"
-  tar -tzf "$metadata_archive" >"$listing"
-  grep -q './cluster-info.txt' "$listing"
-  grep -q './topics.txt' "$listing"
-  echo "restore verification ok: data"
-}
-
-verify_control() {
-  local airflow_dump config_archive config_listing release_archive release_listing restored_tables
-
-  airflow_dump="$(download_latest airflow-db)"
-  config_archive="$(download_latest config)"
-  release_archive="$(download_latest release-manifests)"
-  config_listing="$tmp_dir/config.list"
-  release_listing="$tmp_dir/release-manifests.list"
-
-  restore_container="vn-news-airflow-restore-$$"
+  restore_container="vn-news-${label}-restore-$$"
   docker run -d \
     --rm \
     --name "$restore_container" \
     --network none \
     --tmpfs /var/lib/postgresql/data:rw,size=512m \
     -e POSTGRES_HOST_AUTH_METHOD=trust \
-    "${AIRFLOW_DB_IMAGE:-postgres:16.9}" >/dev/null
+    "$image" >/dev/null
   for _ in $(seq 1 30); do
     if docker exec "$restore_container" pg_isready -U postgres >/dev/null 2>&1; then
       break
@@ -113,32 +90,67 @@ verify_control() {
   docker exec "$restore_container" createuser \
     --username postgres \
     --login \
-    airflow
+    "$db_user"
   docker exec "$restore_container" createdb \
     --username postgres \
-    --owner airflow \
-    airflow
+    --owner "$db_user" \
+    "$db_name"
   docker exec -i "$restore_container" pg_restore \
     --username postgres \
-    --dbname airflow \
-    --role airflow \
+    --dbname "$db_name" \
+    --role "$db_user" \
     --no-owner \
     --no-privileges \
-    --exit-on-error <"$airflow_dump" >/dev/null
+    --exit-on-error <"$dump_file" >/dev/null
   restored_tables="$(
     docker exec "$restore_container" psql \
       --username postgres \
-      --dbname airflow \
+      --dbname "$db_name" \
       --tuples-only \
       --no-align \
       --command "select count(*) from information_schema.tables where table_schema = 'public';"
   )"
   [[ "$restored_tables" =~ ^[1-9][0-9]*$ ]] || {
-    echo "Airflow restore verification produced no public tables." >&2
+    echo "$label restore verification produced no public tables." >&2
     exit 1
   }
   docker rm -f "$restore_container" >/dev/null
   restore_container=""
+}
+
+verify_data() {
+  local metadata_archive polaris_dump listing
+
+  metadata_archive="$(download_latest redpanda-metadata)"
+  polaris_dump="$(download_latest polaris-db)"
+  listing="$tmp_dir/redpanda-metadata.list"
+  tar -tzf "$metadata_archive" >"$listing"
+  grep -q './cluster-info.txt' "$listing"
+  grep -q './topics.txt' "$listing"
+  verify_postgres_dump \
+    "$polaris_dump" \
+    "${POLARIS_DB_IMAGE:-postgres:18.3}" \
+    "${VN_NEWS_POLARIS_DB_NAME:-POLARIS}" \
+    "${VN_NEWS_POLARIS_DB_USER:-polaris}" \
+    polaris
+  echo "restore verification ok: data"
+}
+
+verify_control() {
+  local airflow_dump config_archive config_listing release_archive release_listing
+
+  airflow_dump="$(download_latest airflow-db)"
+  config_archive="$(download_latest config)"
+  release_archive="$(download_latest release-manifests)"
+  config_listing="$tmp_dir/config.list"
+  release_listing="$tmp_dir/release-manifests.list"
+
+  verify_postgres_dump \
+    "$airflow_dump" \
+    "${AIRFLOW_DB_IMAGE:-postgres:16.9}" \
+    airflow \
+    airflow \
+    airflow
 
   tar -tzf "$config_archive" >"$config_listing"
   tar -tzf "$release_archive" >"$release_listing"

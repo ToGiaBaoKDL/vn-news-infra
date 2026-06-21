@@ -38,6 +38,12 @@ x-rss-task-env: &rss-task-env
   VN_NEWS_SCHEMA_REGISTRY_URL: ${VN_NEWS_SCHEMA_REGISTRY_URL:?set VN_NEWS_SCHEMA_REGISTRY_URL}
   VN_NEWS_STORAGE_ENDPOINT_URL: ${VN_NEWS_STORAGE_ENDPOINT_URL:?set VN_NEWS_STORAGE_ENDPOINT_URL}
 
+x-spark-task-env: &spark-task-env
+  VN_NEWS_SPARK_MASTER_URL: ${VN_NEWS_SPARK_MASTER_URL:?set VN_NEWS_SPARK_MASTER_URL}
+  VN_NEWS_SPARK_DRIVER_HOST: ${VN_NEWS_CONTROL_PRIVATE_IP:?set VN_NEWS_CONTROL_PRIVATE_IP}
+  VN_NEWS_SPARK_DRIVER_PORT: ${VN_NEWS_SPARK_DRIVER_PORT:?set VN_NEWS_SPARK_DRIVER_PORT}
+  VN_NEWS_SPARK_BLOCK_MANAGER_PORT: ${VN_NEWS_SPARK_BLOCK_MANAGER_PORT:?set VN_NEWS_SPARK_BLOCK_MANAGER_PORT}
+
 x-airflow-common: &airflow-common
   image: ${VN_NEWS_IMAGE_REGISTRY:?set VN_NEWS_IMAGE_REGISTRY}/${VN_NEWS_IMAGE_NAMESPACE:?set VN_NEWS_IMAGE_NAMESPACE}/vn-news-airflow-runtime:${VN_NEWS_IMAGE_TAG:?set VN_NEWS_IMAGE_TAG}
   depends_on:
@@ -133,7 +139,7 @@ services:
       docker-socket-proxy:
         condition: service_healthy
     environment:
-      <<: [*airflow-env, *rss-task-env]
+      <<: [*airflow-env, *rss-task-env, *spark-task-env]
     secrets: *airflow-secrets
     healthcheck:
       test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname \"$$(hostname)\""]
@@ -147,7 +153,7 @@ services:
     command: airflow dag-processor
     restart: unless-stopped
     environment:
-      <<: [*airflow-env, *rss-task-env]
+      <<: [*airflow-env, *rss-task-env, *spark-task-env]
     secrets: *airflow-secrets
     healthcheck:
       test: ["CMD-SHELL", "airflow jobs check --job-type DagProcessorJob --hostname \"$$(hostname)\""]

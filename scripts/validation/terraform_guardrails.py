@@ -4,15 +4,14 @@ import re
 import sys
 from pathlib import Path
 
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 LOCALS_TF = REPO_ROOT / "terraform" / "oci" / "locals.tf"
 BACKUPS_TF = REPO_ROOT / "terraform" / "oci" / "backups.tf"
 
 EXPECTED_NODES = {
-    "tgb-data-1": {"ocpus": 1, "memory_gb": 6},
-    "tgb-control-1": {"ocpus": 1, "memory_gb": 6},
-    "tgb-processing-1": {"ocpus": 2, "memory_gb": 12},
+    "tgb-data-1": {"ocpus": 1, "memory_gb": 6, "private_ip": "10.0.10.16"},
+    "tgb-control-1": {"ocpus": 1, "memory_gb": 6, "private_ip": "10.0.10.221"},
+    "tgb-processing-1": {"ocpus": 2, "memory_gb": 12, "private_ip": "10.0.10.50"},
 }
 
 EXPECTED = {
@@ -47,7 +46,8 @@ def string(text: str, name: str) -> str:
 
 
 def node_block(text: str, name: str) -> str:
-    match = re.search(rf"^\s*{re.escape(name)}\s*=\s*\{{(?P<body>.*?)^\s*\}}", text, re.MULTILINE | re.DOTALL)
+    pattern = rf"^\s*{re.escape(name)}\s*=\s*\{{(?P<body>.*?)^\s*\}}"
+    match = re.search(pattern, text, re.MULTILINE | re.DOTALL)
     if not match:
         raise ValueError(f"missing node block: {name}")
     return match.group("body")
@@ -70,8 +70,16 @@ def main() -> int:
         body = node_block(text, name)
         ocpus = number(body, "ocpus")
         memory_gb = number(body, "memory_gb")
-        if ocpus != expected["ocpus"] or memory_gb != expected["memory_gb"]:
-            return fail(f"{name} must remain {expected['ocpus']} OCPU / {expected['memory_gb']} GB.")
+        private_ip = string(body, "private_ip")
+        if (
+            ocpus != expected["ocpus"]
+            or memory_gb != expected["memory_gb"]
+            or private_ip != expected["private_ip"]
+        ):
+            return fail(
+                f"{name} must remain {expected['ocpus']} OCPU / "
+                f"{expected['memory_gb']} GB at {expected['private_ip']}."
+            )
         total_ocpus += ocpus
         total_memory_gb += memory_gb
 

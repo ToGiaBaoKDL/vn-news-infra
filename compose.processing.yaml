@@ -2,3 +2,4 @@ name: vn-news-processing
 
 include:
   - ingestion/compose.yaml
+  - spark/compose.processing.yaml

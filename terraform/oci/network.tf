@@ -112,3 +112,22 @@ resource "oci_core_network_security_group_security_rule" "data_services" {
     }
   }
 }
+
+resource "oci_core_network_security_group_security_rule" "spark_services" {
+  for_each = local.spark_ingress_rules
+
+  network_security_group_id = oci_core_network_security_group.role[each.value.role].id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = local.vcn_cidr
+  source_type               = "CIDR_BLOCK"
+  stateless                 = false
+  description               = "Allow private Spark traffic for ${each.key}."
+
+  tcp_options {
+    destination_port_range {
+      min = each.value.min
+      max = each.value.max
+    }
+  }
+}

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154
 
 log() {
   printf '[vn-news-bootstrap] %s\n' "$*"

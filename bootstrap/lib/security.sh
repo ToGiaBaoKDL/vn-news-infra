@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154
 
 configure_users() {
   log "Configuring users and groups"
   groupadd -f vn-news
 
-  if id "$deploy_user" >/dev/null 2>&1; then
-    usermod -aG docker,vn-news "$deploy_user"
+  if ! id "$deploy_user" >/dev/null 2>&1; then
+    echo "Deployment user does not exist: $deploy_user" >&2
+    exit 1
   fi
+  usermod -aG docker,vn-news "$deploy_user"
 }
 
 configure_ssh() {
@@ -38,12 +41,22 @@ configure_firewall() {
   log "Configuring UFW"
   ufw default deny incoming
   ufw default allow outgoing
-  ufw allow 22/tcp
+  ufw allow from "$ssh_ingress_cidr" to any port 22 proto tcp
 
   if [[ "$role" == "data" ]]; then
     ufw allow from "$vcn_cidr" to any port 19092 proto tcp
     ufw allow from "$vcn_cidr" to any port 18081 proto tcp
     ufw allow from "$vcn_cidr" to any port 8333 proto tcp
+    ufw allow from "$vcn_cidr" to any port 18181 proto tcp
+  fi
+
+  if [[ "$role" == "control" ]]; then
+    ufw allow from "$vcn_cidr" to any port 17077:17079 proto tcp
+    ufw allow from "$vcn_cidr" to any port 18080 proto tcp
+  fi
+
+  if [[ "$role" == "processing" ]]; then
+    ufw allow from "$vcn_cidr" to any port 17078 proto tcp
   fi
 
   ufw --force enable

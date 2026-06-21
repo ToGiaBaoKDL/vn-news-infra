@@ -4,18 +4,18 @@ set -euo pipefail
 credential="${1:-}"
 control_host="${VN_NEWS_CONTROL_SSH_HOST:-tgb-control-1}"
 data_host="${VN_NEWS_DATA_SSH_HOST:-tgb-data-1}"
-processing_host="${VN_NEWS_PROCESSING_SSH_HOST:-tgb-processing-1}"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/get_service_credential.sh <credential>
+Usage: scripts/secrets/get_credential.sh <credential>
 
 Credentials:
   airflow-admin-password
   airflow-db-password
+  polaris-bootstrap-credentials
+  polaris-client-credentials
   seaweedfs-storage-admin
   seaweedfs-ingestion
-  seaweedfs-curated-writer
 EOF
 }
 
@@ -28,6 +28,14 @@ case "$credential" in
     host="$control_host"
     secret_file="airflow-db-password"
     ;;
+  polaris-bootstrap-credentials)
+    host="$data_host"
+    secret_file="polaris-bootstrap-credentials.json"
+    ;;
+  polaris-client-credentials)
+    host="$control_host"
+    secret_file="polaris-client-credentials.json"
+    ;;
   seaweedfs-storage-admin)
     host="$data_host"
     secret_file="storage-admin-s3-credentials"
@@ -35,10 +43,6 @@ case "$credential" in
   seaweedfs-ingestion)
     host="$control_host"
     secret_file="ingestion-s3-credentials"
-    ;;
-  seaweedfs-curated-writer)
-    host="$processing_host"
-    secret_file="curated-writer-s3-credentials"
     ;;
   -h | --help | "")
     usage

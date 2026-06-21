@@ -11,19 +11,27 @@ node_modules/
 .next/
 out/
 dist/
+build/
 
 .env
 .env.local
 .resource-manager.env
+bootstrap/bootstrap.env
+env/*.env
 *.log
 
 .terraform/
 *.tfstate
 *.tfstate.*
 *.tfplan
+terraform/**/backend.hcl
+*.backend.hcl
+!*.backend.hcl.example
 *.tfvars
 *.tfvars.json
+*.tfvars.*.bak
 !*.tfvars.example
+!*.tfvars.json.example
 crash.log
 crash.*.log
 override.tf

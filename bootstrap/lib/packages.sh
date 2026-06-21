@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 
 install_base_packages() {
   log "Installing base packages"
@@ -21,12 +22,13 @@ install_base_packages() {
 install_oci_cli() {
   local version="${VN_NEWS_OCI_CLI_VERSION:-3.85.0}"
 
-  if command -v oci >/dev/null 2>&1; then
+  if command -v oci >/dev/null 2>&1 && [[ "$(oci --version 2>&1)" == "$version" ]]; then
     log "OCI CLI already installed"
     return
   fi
 
   log "Installing OCI CLI ${version}"
+  rm -rf /opt/oci-cli
   python3 -m venv /opt/oci-cli
   /opt/oci-cli/bin/python -m pip install --upgrade pip
   /opt/oci-cli/bin/python -m pip install "oci-cli==${version}"
@@ -36,12 +38,13 @@ install_oci_cli() {
 install_uv() {
   local version="${VN_NEWS_UV_VERSION:-0.11.17}"
 
-  if command -v uv >/dev/null 2>&1; then
+  if command -v uv >/dev/null 2>&1 && [[ "$(uv --version)" == "uv $version" ]]; then
     log "uv already installed"
     return
   fi
 
   log "Installing uv ${version}"
+  rm -rf /opt/uv
   python3 -m venv /opt/uv
   /opt/uv/bin/python -m pip install --upgrade pip
   /opt/uv/bin/python -m pip install "uv==${version}"

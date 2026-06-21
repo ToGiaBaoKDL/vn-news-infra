@@ -16,23 +16,41 @@ jobs:
       - name: Check out infra
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          version: "0.11.17"
+          python-version: "3.12"
+
+      - name: Validate Python
+        run: |
+          uv sync --frozen --all-groups
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run python -m pytest
+
       - name: Validate role env templates
         run: |
           test -f env/data.env.example
           test -f env/control.env.example
           test -f env/processing.env.example
+          test -f terraform/oci/terraform.tfvars.json.example
           if find . -maxdepth 1 -name '.env*.example' | grep -q .; then
             echo "Root env example files are not allowed; use env/<role>.env.example."
             exit 1
           fi
 
       - name: Validate shell scripts
-        run: find bootstrap scripts -name '*.sh' -print0 | xargs -0 -n1 bash -n
+        run: |
+          find bootstrap scripts -name '*.sh' -print0 | xargs -0 -n1 bash -n
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck
+          find bootstrap scripts -name '*.sh' ! -path '*/lib/*' -print0 | xargs -0 shellcheck --external-sources --severity=warning
 
       - name: Validate role Compose files
         run: |
           secrets_dir="$(mktemp -d)"
-          for name in seaweedfs-s3-config.json ingestion-s3-credentials airflow-db-password airflow-api-jwt-secret airflow-fernet-key airflow-admin-password cloudflare-control-tunnel-token cloudflare-data-tunnel-token; do
+          for name in seaweedfs-s3-config.json ingestion-s3-credentials airflow-db-password airflow-api-jwt-secret airflow-fernet-key airflow-admin-password cloudflare-control-tunnel-token cloudflare-data-tunnel-token polaris-db-password polaris-application.properties polaris-bootstrap-credentials.json spark-rpc-auth-secret; do
             : > "$secrets_dir/$name"
           done
           VN_NEWS_SECRETS_HOST_DIR="$secrets_dir" docker compose --env-file env/data.env.example -f compose.data.yaml config >/dev/null
@@ -52,4 +70,4 @@ jobs:
           terraform -chdir=terraform/cloudflare fmt -check -recursive
           terraform -chdir=terraform/cloudflare init -backend=false
           terraform -chdir=terraform/cloudflare validate
-          python3 scripts/check_terraform_guardrails.py
+          python3 -m scripts.validation.terraform_guardrails

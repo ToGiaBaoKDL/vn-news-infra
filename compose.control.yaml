@@ -2,4 +2,5 @@ name: vn-news-control
 
 include:
   - airflow/compose.yaml
+  - spark/compose.control.yaml
   - access/cloudflare/compose.control.yaml

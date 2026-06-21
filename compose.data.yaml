@@ -3,4 +3,5 @@ name: vn-news-data
 include:
   - redpanda/compose.yaml
   - seaweedfs/compose.yaml
+  - polaris/compose.yaml
   - access/cloudflare/compose.data.yaml
