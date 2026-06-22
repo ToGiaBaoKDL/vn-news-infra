@@ -77,7 +77,7 @@ verify_postgres_dump() {
     --rm \
     --name "$restore_container" \
     --network none \
-    --tmpfs /var/lib/postgresql/data:rw,size=512m \
+    --tmpfs /var/lib/postgresql:rw,size=512m \
     -e POSTGRES_HOST_AUTH_METHOD=trust \
     "$image" >/dev/null
   for _ in $(seq 1 30); do
