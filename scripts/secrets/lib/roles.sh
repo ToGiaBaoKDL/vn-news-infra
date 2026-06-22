@@ -8,7 +8,7 @@ role_file_specs() {
     data)
       printf '%s|%s|%s|%s|%s\n' \
         secret VN_NEWS_SEAWEEDFS_S3_CONFIG_SECRET_OCID seaweedfs-s3-config.json 0400 "${VN_NEWS_SEAWEEDFS_UID:-1000}:${VN_NEWS_SEAWEEDFS_GID:-1000}" \
-        secret VN_NEWS_STORAGE_ADMIN_S3_CREDENTIALS_SECRET_OCID storage-admin-s3-credentials 0440 "root:$host_group" \
+        secret VN_NEWS_STORAGE_ADMIN_S3_CREDENTIALS_SECRET_OCID storage-admin-s3-credentials 0440 "$polaris_uid:$host_group" \
         secret VN_NEWS_POLARIS_DB_PASSWORD_SECRET_OCID polaris-db-password 0400 "$polaris_db_uid:$polaris_db_gid" \
         generated "" "$polaris_application_properties_file" 0400 "$polaris_uid:$polaris_gid" \
         generated "" "$polaris_bootstrap_credentials_file" 0440 "$polaris_uid:$host_group" \
