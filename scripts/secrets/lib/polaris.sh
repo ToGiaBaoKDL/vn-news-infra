@@ -57,5 +57,5 @@ client_secret = os.environ["VN_NEWS_POLARIS_BOOTSTRAP_CLIENT_SECRET"]
 print(json.dumps({realm: {"client-id": client_id, "client-secret": client_secret}}, separators=(",", ":")))
 ')"
   printf '%s\n' "$bootstrap_json" \
-    | write_managed_file "$polaris_bootstrap_credentials_file" 0400 "$polaris_uid:$polaris_gid"
+    | write_managed_file "$polaris_bootstrap_credentials_file" 0440 "$polaris_uid:$host_group"
 }
