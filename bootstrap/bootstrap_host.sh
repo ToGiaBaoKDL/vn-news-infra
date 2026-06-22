@@ -3,7 +3,7 @@ set -euo pipefail
 
 role="${1:-}"
 vcn_cidr="${VN_NEWS_VCN_CIDR:-10.0.0.0/16}"
-ssh_ingress_cidr="${VN_NEWS_SSH_INGRESS_CIDR:?VN_NEWS_SSH_INGRESS_CIDR is required}"
+ssh_ingress_cidrs="${VN_NEWS_SSH_INGRESS_CIDRS:?VN_NEWS_SSH_INGRESS_CIDRS is required}"
 deploy_user="${SUDO_USER:-ubuntu}"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

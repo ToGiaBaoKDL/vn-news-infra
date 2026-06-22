@@ -125,6 +125,16 @@ locals {
     }
   }
 
+  ssh_ingress_rules = merge([
+    for location, cidr in var.ssh_ingress_cidrs : {
+      for role in keys(local.roles) : "${role}:${location}" => {
+        role     = role
+        location = location
+        cidr     = cidr
+      }
+    }
+  ]...)
+
   runtime_secret_ocids_by_role = {
     for role in keys(local.roles) : role => lookup(var.runtime_secret_ocids, role, {})
   }

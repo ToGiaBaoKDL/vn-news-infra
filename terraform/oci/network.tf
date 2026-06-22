@@ -76,15 +76,15 @@ resource "oci_core_network_security_group_security_rule" "role_egress_all" {
 }
 
 resource "oci_core_network_security_group_security_rule" "role_ssh" {
-  for_each = local.roles
+  for_each = local.ssh_ingress_rules
 
-  network_security_group_id = oci_core_network_security_group.role[each.key].id
+  network_security_group_id = oci_core_network_security_group.role[each.value.role].id
   direction                 = "INGRESS"
   protocol                  = "6"
-  source                    = var.ssh_ingress_cidr
+  source                    = each.value.cidr
   source_type               = "CIDR_BLOCK"
   stateless                 = false
-  description               = "Allow SSH to ${each.key} node."
+  description               = "Allow SSH from ${each.value.location} to ${each.value.role} node."
 
   tcp_options {
     destination_port_range {

@@ -22,7 +22,7 @@ def tfvars_payload() -> dict:
         "region": "ap-singapore-1",
         "runtime_secret_ocids": {role: {} for role in ROLE_NAMES},
         "ssh_authorized_key": "ssh-ed25519 test",
-        "ssh_ingress_cidr": "203.0.113.10/32",
+        "ssh_ingress_cidrs": {"admin": "203.0.113.10/32"},
         "tenancy_ocid": "ocid1.tenancy.test",
     }
 

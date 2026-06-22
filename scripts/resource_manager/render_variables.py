@@ -11,7 +11,7 @@ REQUIRED_VARIABLES = (
     "compartment_ocid",
     "region",
     "ssh_authorized_key",
-    "ssh_ingress_cidr",
+    "ssh_ingress_cidrs",
     "tenancy_ocid",
 )
 

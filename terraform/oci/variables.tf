@@ -60,13 +60,16 @@ variable "ssh_authorized_key" {
   }
 }
 
-variable "ssh_ingress_cidr" {
-  description = "Trusted IPv4 CIDR allowed to SSH into nodes."
-  type        = string
+variable "ssh_ingress_cidrs" {
+  description = "Named trusted IPv4 CIDRs allowed to SSH into nodes."
+  type        = map(string)
 
   validation {
-    condition     = can(cidrnetmask(var.ssh_ingress_cidr)) && var.ssh_ingress_cidr != "0.0.0.0/0"
-    error_message = "ssh_ingress_cidr must be a restricted IPv4 CIDR, not 0.0.0.0/0."
+    condition = length(var.ssh_ingress_cidrs) > 0 && alltrue([
+      for name, cidr in var.ssh_ingress_cidrs :
+      can(regex("^[a-z][a-z0-9_-]*$", name)) && can(cidrnetmask(cidr)) && cidr != "0.0.0.0/0"
+    ])
+    error_message = "ssh_ingress_cidrs must map stable names to restricted IPv4 CIDRs, never 0.0.0.0/0."
   }
 }
 
