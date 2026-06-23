@@ -19,7 +19,6 @@ services:
       - |-
         install -d -m 0700 /tmp/spark-conf
         install -d -m 0755 /tmp/spark-logs
-        cp -a /opt/spark/conf/. /tmp/spark-conf/
         {
           printf 'spark.authenticate true\n'
           printf 'spark.authenticate.secret %s\n' "$$(tr -d '\n' </run/secrets/spark-rpc-auth-secret)"
