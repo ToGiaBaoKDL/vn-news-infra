@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import shlex
 from pathlib import Path
 
 from scripts.secrets.catalog import ROLE_NAMES, ROLE_SECRET_KEYS, SECRET_ENV_VARS
@@ -50,7 +51,7 @@ def render_role_envs(tfvars_path: Path, templates_dir: Path, output_dir: Path) -
         replacements = {
             SECRET_ENV_VARS[key]: secret_ids_by_role[role][key] for key in ROLE_SECRET_KEYS[role]
         }
-        replacements["VN_NEWS_SSH_INGRESS_CIDRS"] = ssh_entries
+        replacements["VN_NEWS_SSH_INGRESS_CIDRS"] = shlex.quote(ssh_entries)
         template_path = templates_dir / f"{role}.env.example"
         output_path = output_dir / f"{role}.env"
         output_path.write_text(
