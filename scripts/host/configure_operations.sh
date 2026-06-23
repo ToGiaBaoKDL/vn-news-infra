@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-role="${1:?role is required: data or control}"
+role="${1:?role is required: data, control, or processing}"
 deploy_root="${2:?deploy root is required}"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 recovery_dir="$(cd "$script_dir/../recovery" && pwd)"
@@ -12,7 +12,34 @@ install_root="/usr/local/lib/vn-news"
 source "$shared_lib_dir/common.sh"
 
 require_root
-require_role "$role" data control
+require_role "$role" data control processing
+load_optional_env_file "$(role_env_path "$role")"
+
+configure_private_firewall() {
+  local private_cidr="${VN_NEWS_PRIVATE_INGRESS_CIDR:-10.0.0.0/16}"
+  local port
+  local ports=()
+
+  if ! command -v ufw >/dev/null 2>&1; then
+    return
+  fi
+
+  case "$role" in
+    data)
+      ports=(19092 18081 8333 18181)
+      ;;
+    control)
+      ports=(17077:17079 18080)
+      ;;
+    processing)
+      ports=(17078 18081)
+      ;;
+  esac
+
+  for port in "${ports[@]}"; do
+    ufw allow from "$private_cidr" to any port "$port" proto tcp >/dev/null
+  done
+}
 
 install -d -m 0755 "$install_root/host" "$install_root/lib" "$install_root/recovery"
 install -m 0755 "$recovery_dir/export.sh" "$install_root/recovery/export.sh"
@@ -76,8 +103,12 @@ EOF
 fi
 
 systemctl daemon-reload
-systemctl enable --now "vn-news-recovery-export@${role}.timer"
-systemctl is-enabled --quiet "vn-news-recovery-export@${role}.timer"
+configure_private_firewall
+
+if [[ "$role" == "data" || "$role" == "control" ]]; then
+  systemctl enable --now "vn-news-recovery-export@${role}.timer"
+  systemctl is-enabled --quiet "vn-news-recovery-export@${role}.timer"
+fi
 if [[ "$role" == "data" ]]; then
   systemctl enable --now vn-news-data-volume-metric.timer
   systemctl is-enabled --quiet vn-news-data-volume-metric.timer

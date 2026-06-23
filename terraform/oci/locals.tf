@@ -123,6 +123,11 @@ locals {
       min  = 17078
       max  = 17078
     }
+    processing_worker_ui = {
+      role = "processing"
+      min  = 18081
+      max  = 18081
+    }
   }
 
   ssh_ingress_rules = merge([
