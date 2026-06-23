@@ -10,19 +10,26 @@ services:
       SPARK_DAEMON_MEMORY: 512m
       SPARK_NO_DAEMONIZE: "true"
       SPARK_MASTER_OPTS: >-
-        -Dspark.authenticate=true
-        -Dspark.authenticate.secret.file=/run/secrets/spark-rpc-auth-secret
         -Dspark.deploy.defaultCores=1
         -Dspark.master.rest.enabled=false
         -Dspark.master.ui.decommission.allow.mode=DENY
     command:
-      - /opt/spark/sbin/start-master.sh
-      - --host
-      - ${VN_NEWS_CONTROL_PRIVATE_IP:?set VN_NEWS_CONTROL_PRIVATE_IP}
-      - --port
-      - ${VN_NEWS_SPARK_MASTER_PORT:-17077}
-      - --webui-port
-      - ${VN_NEWS_SPARK_MASTER_UI_PORT:-18080}
+      - bash
+      - -ec
+      - |-
+        install -d -m 0700 /tmp/spark-conf
+        install -d -m 0755 /tmp/spark-logs
+        cp -a /opt/spark/conf/. /tmp/spark-conf/
+        {
+          printf 'spark.authenticate true\n'
+          printf 'spark.authenticate.secret %s\n' "$$(tr -d '\n' </run/secrets/spark-rpc-auth-secret)"
+        } >>/tmp/spark-conf/spark-defaults.conf
+        export SPARK_CONF_DIR=/tmp/spark-conf
+        export SPARK_LOG_DIR=/tmp/spark-logs
+        exec /opt/spark/sbin/start-master.sh \
+          --host "${VN_NEWS_CONTROL_PRIVATE_IP:?set VN_NEWS_CONTROL_PRIVATE_IP}" \
+          --port "${VN_NEWS_SPARK_MASTER_PORT:-17077}" \
+          --webui-port "${VN_NEWS_SPARK_MASTER_UI_PORT:-18080}"
     secrets:
       - spark-rpc-auth-secret
     tmpfs:
