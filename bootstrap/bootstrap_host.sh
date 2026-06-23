@@ -11,6 +11,8 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$script_dir/lib/common.sh"
 # shellcheck source=bootstrap/lib/packages.sh
 source "$script_dir/lib/packages.sh"
+# shellcheck source=scripts/host/firewall.sh
+source "$script_dir/../scripts/host/firewall.sh"
 # shellcheck source=bootstrap/lib/security.sh
 source "$script_dir/lib/security.sh"
 # shellcheck source=bootstrap/lib/runtime.sh

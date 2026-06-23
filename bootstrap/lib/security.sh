@@ -38,52 +38,11 @@ EOF
 }
 
 configure_firewall() {
-  local cidr entry location
-  local -a ssh_entries
-  local managed_ssh_cidrs_file="/etc/vn-news/ssh-ingress-cidrs"
-
   log "Configuring UFW"
   ufw default deny incoming
   ufw default allow outgoing
-
-  if [[ -f "$managed_ssh_cidrs_file" ]]; then
-    while IFS='=' read -r _ cidr; do
-      [[ -n "$cidr" ]] || continue
-      if ufw status | grep -Fq "$cidr"; then
-        ufw --force delete allow from "$cidr" to any port 22 proto tcp
-      fi
-    done <"$managed_ssh_cidrs_file"
-  fi
-  install -d -m 0755 /etc/vn-news
-  : >"$managed_ssh_cidrs_file"
-  read -r -a ssh_entries <<<"$ssh_ingress_cidrs"
-  for entry in "${ssh_entries[@]}"; do
-    if [[ "$entry" != *=* ]]; then
-      echo "Invalid VN_NEWS_SSH_INGRESS_CIDRS entry: $entry" >&2
-      exit 1
-    fi
-    location="${entry%%=*}"
-    cidr="${entry#*=}"
-    ufw allow from "$cidr" to any port 22 proto tcp comment "vn-news-ssh-$location"
-    printf '%s=%s\n' "$location" "$cidr" >>"$managed_ssh_cidrs_file"
-  done
-  chmod 0644 "$managed_ssh_cidrs_file"
-
-  if [[ "$role" == "data" ]]; then
-    ufw allow from "$vcn_cidr" to any port 19092 proto tcp
-    ufw allow from "$vcn_cidr" to any port 18081 proto tcp
-    ufw allow from "$vcn_cidr" to any port 8333 proto tcp
-    ufw allow from "$vcn_cidr" to any port 18181 proto tcp
-  fi
-
-  if [[ "$role" == "control" ]]; then
-    ufw allow from "$vcn_cidr" to any port 17077:17079 proto tcp
-    ufw allow from "$vcn_cidr" to any port 18080 proto tcp
-  fi
-
-  if [[ "$role" == "processing" ]]; then
-    ufw allow from "$vcn_cidr" to any port 17078 proto tcp
-  fi
-
+  configure_ssh_firewall_rules "$ssh_ingress_cidrs"
+  configure_role_private_firewall_rules "$role" "$vcn_cidr"
+  disable_rpcbind_listener
   ufw --force enable
 }

@@ -10,6 +10,8 @@ install_root="/usr/local/lib/vn-news"
 
 # shellcheck source=scripts/lib/common.sh
 source "$shared_lib_dir/common.sh"
+# shellcheck source=scripts/host/firewall.sh
+source "$script_dir/firewall.sh"
 
 require_root
 require_role "$role" data control processing
@@ -17,33 +19,20 @@ load_optional_env_file "$(role_env_path "$role")"
 
 configure_private_firewall() {
   local private_cidr="${VN_NEWS_PRIVATE_INGRESS_CIDR:-10.0.0.0/16}"
-  local port
-  local ports=()
 
   if ! command -v ufw >/dev/null 2>&1; then
     return
   fi
 
-  case "$role" in
-    data)
-      ports=(19092 18081 8333 18181)
-      ;;
-    control)
-      ports=(17077:17079 18080)
-      ;;
-    processing)
-      ports=(17078 18081)
-      ;;
-  esac
-
-  for port in "${ports[@]}"; do
-    ufw allow from "$private_cidr" to any port "$port" proto tcp >/dev/null
-  done
+  configure_ssh_firewall_rules "${VN_NEWS_SSH_INGRESS_CIDRS:-}"
+  configure_role_private_firewall_rules "$role" "$private_cidr"
+  disable_rpcbind_listener
 }
 
 install -d -m 0755 "$install_root/host" "$install_root/lib" "$install_root/recovery"
 install -m 0755 "$recovery_dir/export.sh" "$install_root/recovery/export.sh"
 install -m 0755 "$recovery_dir/verify.sh" "$install_root/recovery/verify.sh"
+install -m 0644 "$script_dir/firewall.sh" "$install_root/host/firewall.sh"
 install -m 0755 "$script_dir/publish_metrics.sh" "$install_root/host/publish_metrics.sh"
 install -m 0644 "$shared_lib_dir/common.sh" "$install_root/lib/common.sh"
 install -m 0644 "$shared_lib_dir/oci.sh" "$install_root/lib/oci.sh"

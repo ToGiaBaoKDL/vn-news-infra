@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 
 from scripts.secrets.catalog import ROLE_NAMES, ROLE_SECRET_KEYS, SECRET_ENV_VARS
-from scripts.secrets.terraform_vars import read_runtime_secret_ocids
+from scripts.secrets.terraform_vars import load_tfvars, read_runtime_secret_ocids
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,7 +34,14 @@ def replace_env_values(template: str, replacements: dict[str, str]) -> str:
 
 
 def render_role_envs(tfvars_path: Path, templates_dir: Path, output_dir: Path) -> None:
+    tfvars = load_tfvars(tfvars_path)
     secret_ids_by_role = read_runtime_secret_ocids(tfvars_path)
+    ssh_ingress_cidrs = tfvars.get("ssh_ingress_cidrs", {})
+    if not isinstance(ssh_ingress_cidrs, dict) or not ssh_ingress_cidrs:
+        raise ValueError("ssh_ingress_cidrs must be a non-empty object")
+    ssh_entries = " ".join(
+        f"{name}={cidr}" for name, cidr in sorted(ssh_ingress_cidrs.items())
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
     for role in ROLE_NAMES:
         missing = [key for key in ROLE_SECRET_KEYS[role] if key not in secret_ids_by_role[role]]
@@ -43,6 +50,7 @@ def render_role_envs(tfvars_path: Path, templates_dir: Path, output_dir: Path) -
         replacements = {
             SECRET_ENV_VARS[key]: secret_ids_by_role[role][key] for key in ROLE_SECRET_KEYS[role]
         }
+        replacements["VN_NEWS_SSH_INGRESS_CIDRS"] = ssh_entries
         template_path = templates_dir / f"{role}.env.example"
         output_path = output_dir / f"{role}.env"
         output_path.write_text(
