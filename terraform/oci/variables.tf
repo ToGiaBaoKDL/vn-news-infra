@@ -67,9 +67,9 @@ variable "ssh_ingress_cidrs" {
   validation {
     condition = length(var.ssh_ingress_cidrs) > 0 && alltrue([
       for name, cidr in var.ssh_ingress_cidrs :
-      can(regex("^[a-z][a-z0-9_-]*$", name)) && can(cidrnetmask(cidr)) && cidr != "0.0.0.0/0"
+      can(regex("^[a-z][a-z0-9_-]*$", name)) && can(cidrnetmask(cidr))
     ])
-    error_message = "ssh_ingress_cidrs must map stable names to restricted IPv4 CIDRs, never 0.0.0.0/0."
+    error_message = "ssh_ingress_cidrs must map stable names to valid IPv4 CIDRs."
   }
 }
 
