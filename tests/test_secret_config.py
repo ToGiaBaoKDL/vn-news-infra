@@ -86,10 +86,7 @@ def test_role_env_renderer_uses_catalog_secret_assignments(tmp_path: Path) -> No
 
     for role, keys in ROLE_SECRET_KEYS.items():
         rendered = (output_dir / f"{role}.env").read_text(encoding="utf-8")
-        assert (
-            "VN_NEWS_SSH_INGRESS_CIDRS=0.0.0.0/0"
-            in rendered
-        )
+        assert "VN_NEWS_SSH_INGRESS_CIDRS=0.0.0.0/0" in rendered
         for key in keys:
             assert f"{SECRET_ENV_VARS[key]}={secret_id(key)}" in rendered
 
