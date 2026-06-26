@@ -22,7 +22,7 @@ def tfvars_payload() -> dict:
         "region": "ap-singapore-1",
         "runtime_secret_ocids": {role: {} for role in ROLE_NAMES},
         "ssh_authorized_key": "ssh-ed25519 test",
-        "ssh_ingress_cidrs": {"admin": "203.0.113.10/32"},
+        "ssh_ingress_cidrs": ["0.0.0.0/0"],
         "tenancy_ocid": "ocid1.tenancy.test",
     }
 
@@ -76,10 +76,7 @@ def test_resource_manager_renderer_serializes_named_secret_map(tmp_path: Path) -
 def test_role_env_renderer_uses_catalog_secret_assignments(tmp_path: Path) -> None:
     tfvars = tmp_path / "terraform.tfvars.json"
     payload = tfvars_payload()
-    payload["ssh_ingress_cidrs"] = {
-        "admin": "203.0.113.10/32",
-        "guest": "203.0.113.11/32",
-    }
+    payload["ssh_ingress_cidrs"] = ["0.0.0.0/0"]
     for role, keys in ROLE_SECRET_KEYS.items():
         payload["runtime_secret_ocids"][role] = {key: secret_id(key) for key in keys}
     tfvars.write_text(json.dumps(payload), encoding="utf-8")
@@ -90,7 +87,7 @@ def test_role_env_renderer_uses_catalog_secret_assignments(tmp_path: Path) -> No
     for role, keys in ROLE_SECRET_KEYS.items():
         rendered = (output_dir / f"{role}.env").read_text(encoding="utf-8")
         assert (
-            "VN_NEWS_SSH_INGRESS_CIDRS='admin=203.0.113.10/32 guest=203.0.113.11/32'"
+            "VN_NEWS_SSH_INGRESS_CIDRS=0.0.0.0/0"
             in rendered
         )
         for key in keys:

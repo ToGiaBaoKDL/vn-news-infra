@@ -61,15 +61,15 @@ variable "ssh_authorized_key" {
 }
 
 variable "ssh_ingress_cidrs" {
-  description = "Named trusted IPv4 CIDRs allowed to SSH into nodes."
-  type        = map(string)
+  description = "IPv4 CIDRs allowed to SSH into nodes."
+  type        = set(string)
 
   validation {
     condition = length(var.ssh_ingress_cidrs) > 0 && alltrue([
-      for name, cidr in var.ssh_ingress_cidrs :
-      can(regex("^[a-z][a-z0-9_-]*$", name)) && can(cidrnetmask(cidr))
+      for cidr in var.ssh_ingress_cidrs :
+      can(cidrnetmask(cidr))
     ])
-    error_message = "ssh_ingress_cidrs must map stable names to valid IPv4 CIDRs."
+    error_message = "ssh_ingress_cidrs must contain valid IPv4 CIDRs."
   }
 }
 

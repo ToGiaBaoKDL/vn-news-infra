@@ -10,8 +10,8 @@
     "processing": {}
   },
   "ssh_authorized_key": "ssh-ed25519 replace-with-public-key",
-  "ssh_ingress_cidrs": {
-    "admin": "replace-with-trusted-ip/32"
-  },
+  "ssh_ingress_cidrs": [
+    "0.0.0.0/0"
+  ],
   "tenancy_ocid": "ocid1.tenancy.oc1..replace-with-tenancy-ocid"
 }

@@ -6,7 +6,7 @@ ufw_delete_rule() {
 
 configure_ssh_firewall_rules() {
   local ssh_ingress_cidrs="$1"
-  local cidr entry location
+  local cidr entry managed_entry
   local managed_ssh_cidrs_file="/etc/vn-news/ssh-ingress-cidrs"
   local -a ssh_entries
 
@@ -14,7 +14,12 @@ configure_ssh_firewall_rules() {
 
   install -d -m 0755 /etc/vn-news
   if [[ -f "$managed_ssh_cidrs_file" ]]; then
-    while IFS='=' read -r _ cidr; do
+    while IFS= read -r managed_entry; do
+      if [[ "$managed_entry" == *=* ]]; then
+        cidr="${managed_entry#*=}"
+      else
+        cidr="$managed_entry"
+      fi
       [[ -n "$cidr" ]] || continue
       ufw_delete_rule allow from "$cidr" to any port 22 proto tcp
     done <"$managed_ssh_cidrs_file"
@@ -26,14 +31,13 @@ configure_ssh_firewall_rules() {
   : >"$managed_ssh_cidrs_file"
   read -r -a ssh_entries <<<"$ssh_ingress_cidrs"
   for entry in "${ssh_entries[@]}"; do
-    if [[ "$entry" != *=* ]]; then
-      echo "Invalid SSH ingress entry: $entry" >&2
-      exit 1
+    if [[ "$entry" == *=* ]]; then
+      cidr="${entry#*=}"
+    else
+      cidr="$entry"
     fi
-    location="${entry%%=*}"
-    cidr="${entry#*=}"
-    ufw allow from "$cidr" to any port 22 proto tcp comment "vn-news-ssh-$location" >/dev/null
-    printf '%s=%s\n' "$location" "$cidr" >>"$managed_ssh_cidrs_file"
+    ufw allow from "$cidr" to any port 22 proto tcp comment "vn-news-ssh" >/dev/null
+    printf '%s\n' "$cidr" >>"$managed_ssh_cidrs_file"
   done
   chmod 0644 "$managed_ssh_cidrs_file"
 }

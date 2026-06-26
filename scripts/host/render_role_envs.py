@@ -37,12 +37,12 @@ def replace_env_values(template: str, replacements: dict[str, str]) -> str:
 def render_role_envs(tfvars_path: Path, templates_dir: Path, output_dir: Path) -> None:
     tfvars = load_tfvars(tfvars_path)
     secret_ids_by_role = read_runtime_secret_ocids(tfvars_path)
-    ssh_ingress_cidrs = tfvars.get("ssh_ingress_cidrs", {})
-    if not isinstance(ssh_ingress_cidrs, dict) or not ssh_ingress_cidrs:
-        raise ValueError("ssh_ingress_cidrs must be a non-empty object")
-    ssh_entries = " ".join(
-        f"{name}={cidr}" for name, cidr in sorted(ssh_ingress_cidrs.items())
-    )
+    ssh_ingress_cidrs = tfvars.get("ssh_ingress_cidrs", [])
+    if not isinstance(ssh_ingress_cidrs, list) or not ssh_ingress_cidrs:
+        raise ValueError("ssh_ingress_cidrs must be a non-empty list")
+    if not all(isinstance(cidr, str) and cidr.strip() for cidr in ssh_ingress_cidrs):
+        raise ValueError("ssh_ingress_cidrs must contain non-empty strings")
+    ssh_entries = " ".join(sorted(ssh_ingress_cidrs))
     output_dir.mkdir(parents=True, exist_ok=True)
     for role in ROLE_NAMES:
         missing = [key for key in ROLE_SECRET_KEYS[role] if key not in secret_ids_by_role[role]]

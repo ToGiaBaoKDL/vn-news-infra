@@ -131,11 +131,10 @@ locals {
   }
 
   ssh_ingress_rules = merge([
-    for location, cidr in var.ssh_ingress_cidrs : {
-      for role in keys(local.roles) : "${role}:${location}" => {
-        role     = role
-        location = location
-        cidr     = cidr
+    for cidr in var.ssh_ingress_cidrs : {
+      for role in keys(local.roles) : "${role}:${replace(replace(cidr, "/", "_"), ".", "_")}" => {
+        role = role
+        cidr = cidr
       }
     }
   ]...)

@@ -84,7 +84,7 @@ resource "oci_core_network_security_group_security_rule" "role_ssh" {
   source                    = each.value.cidr
   source_type               = "CIDR_BLOCK"
   stateless                 = false
-  description               = "Allow SSH from ${each.value.location} to ${each.value.role} node."
+  description               = "Allow SSH from ${each.value.cidr} to ${each.value.role} node."
 
   tcp_options {
     destination_port_range {
