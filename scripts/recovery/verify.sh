@@ -118,9 +118,18 @@ verify_postgres_dump() {
   restore_container=""
 }
 
+verify_deployment_metadata() {
+  local metadata
+
+  metadata="$(download_latest "deployment-metadata/$role")"
+  grep -q "\"role\": \"$role\"" "$metadata"
+  grep -q '"image_tag":' "$metadata"
+}
+
 verify_data() {
   local metadata_archive polaris_dump listing
 
+  verify_deployment_metadata
   metadata_archive="$(download_latest redpanda-metadata)"
   polaris_dump="$(download_latest polaris-db)"
   listing="$tmp_dir/redpanda-metadata.list"
@@ -137,13 +146,12 @@ verify_data() {
 }
 
 verify_control() {
-  local airflow_dump config_archive config_listing release_archive release_listing
+  local airflow_dump config_archive config_listing
 
+  verify_deployment_metadata
   airflow_dump="$(download_latest airflow-db)"
   config_archive="$(download_latest config)"
-  release_archive="$(download_latest release-manifests)"
   config_listing="$tmp_dir/config.list"
-  release_listing="$tmp_dir/release-manifests.list"
 
   verify_postgres_dump \
     "$airflow_dump" \
@@ -153,9 +161,7 @@ verify_control() {
     airflow
 
   tar -tzf "$config_archive" >"$config_listing"
-  tar -tzf "$release_archive" >"$release_listing"
   grep -q '^configs/settings.yaml$' "$config_listing"
-  grep -q '^releases/' "$release_listing"
   echo "restore verification ok: control"
 }
 

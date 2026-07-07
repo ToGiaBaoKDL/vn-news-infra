@@ -50,22 +50,10 @@ resource "oci_objectstorage_object_lifecycle_policy" "recovery" {
       inclusion_patterns = [
         "airflow-db/*",
         "config/*",
+        "deployment-metadata/*",
         "polaris-db/*",
         "redpanda-metadata/*",
       ]
-    }
-  }
-
-  rules {
-    action      = "DELETE"
-    is_enabled  = true
-    name        = "delete-release-manifests"
-    target      = "objects"
-    time_amount = local.recovery_release_retention_days
-    time_unit   = "DAYS"
-
-    object_name_filter {
-      inclusion_patterns = ["release-manifests/*"]
     }
   }
 

@@ -3,6 +3,11 @@ resource "terraform_data" "always_free_guardrails" {
 
   lifecycle {
     precondition {
+      condition     = local.shape == "VM.Standard.A1.Flex"
+      error_message = "Always Free guardrail failed: compute shape must remain VM.Standard.A1.Flex."
+    }
+
+    precondition {
       condition     = local.guardrails.instance_count == 3
       error_message = "Always Free guardrail failed: exactly 3 A1 instances are allowed."
     }
@@ -15,6 +20,15 @@ resource "terraform_data" "always_free_guardrails" {
     precondition {
       condition     = local.guardrails.total_memory_gb == 24
       error_message = "Always Free guardrail failed: total memory must be 24 GB."
+    }
+
+    precondition {
+      condition = (
+        local.nodes["tgb-data-1"].private_ip == "10.0.10.16" &&
+        local.nodes["tgb-control-1"].private_ip == "10.0.10.221" &&
+        local.nodes["tgb-processing-1"].private_ip == "10.0.10.50"
+      )
+      error_message = "Always Free guardrail failed: node private IPs must remain stable."
     }
 
     precondition {

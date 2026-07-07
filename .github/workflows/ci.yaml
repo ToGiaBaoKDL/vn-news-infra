@@ -42,15 +42,15 @@ jobs:
 
       - name: Validate shell scripts
         run: |
-          find bootstrap scripts -name '*.sh' -print0 | xargs -0 -n1 bash -n
+          find scripts -name '*.sh' -print0 | xargs -0 -n1 bash -n
           sudo apt-get update
           sudo apt-get install --yes shellcheck
-          find bootstrap scripts -name '*.sh' ! -path '*/lib/*' -print0 | xargs -0 shellcheck --external-sources --severity=warning
+          find scripts -name '*.sh' ! -path '*/lib/*' -print0 | xargs -0 shellcheck --external-sources --severity=warning
 
       - name: Validate role Compose files
         run: |
           secrets_dir="$(mktemp -d)"
-          for name in seaweedfs-s3-config.json ingestion-s3-credentials airflow-db-password airflow-api-jwt-secret airflow-fernet-key airflow-admin-password cloudflare-control-tunnel-token cloudflare-data-tunnel-token polaris-db-password polaris-application.properties polaris-bootstrap-credentials.json spark-rpc-auth-secret; do
+          for name in seaweedfs-s3-config.json storage-admin-s3-credentials ingestion-s3-credentials polaris-client-credentials.json airflow-db-password airflow-api-jwt-secret airflow-fernet-key airflow-admin-password cloudflare-control-tunnel-token cloudflare-data-tunnel-token polaris-db-password polaris-application.properties polaris-bootstrap-credentials.json spark-rpc-auth-secret; do
             : > "$secrets_dir/$name"
           done
           VN_NEWS_SECRETS_HOST_DIR="$secrets_dir" docker compose --env-file env/data.env.example -f compose.data.yaml config >/dev/null
@@ -70,4 +70,3 @@ jobs:
           terraform -chdir=terraform/cloudflare fmt -check -recursive
           terraform -chdir=terraform/cloudflare init -backend=false
           terraform -chdir=terraform/cloudflare validate
-          python3 -m scripts.validation.terraform_guardrails

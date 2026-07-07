@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.host.render_role_envs import render_role_envs
 from scripts.resource_manager.render_variables import render_variables
 from scripts.secrets.catalog import ROLE_NAMES, ROLE_SECRET_KEYS, SECRET_ENV_VARS
 from scripts.secrets.terraform_vars import (
@@ -71,24 +70,6 @@ def test_resource_manager_renderer_serializes_named_secret_map(tmp_path: Path) -
     runtime_secrets = json.loads(variables["runtime_secret_ocids"])
     assert runtime_secrets["data"]["polaris_client_credentials"] == secret_id("polaris")
     assert variables["compartment_ocid"] == "ocid1.compartment.test"
-
-
-def test_role_env_renderer_uses_catalog_secret_assignments(tmp_path: Path) -> None:
-    tfvars = tmp_path / "terraform.tfvars.json"
-    payload = tfvars_payload()
-    payload["ssh_ingress_cidrs"] = ["0.0.0.0/0"]
-    for role, keys in ROLE_SECRET_KEYS.items():
-        payload["runtime_secret_ocids"][role] = {key: secret_id(key) for key in keys}
-    tfvars.write_text(json.dumps(payload), encoding="utf-8")
-    output_dir = tmp_path / "env"
-
-    render_role_envs(tfvars, Path("env"), output_dir)
-
-    for role, keys in ROLE_SECRET_KEYS.items():
-        rendered = (output_dir / f"{role}.env").read_text(encoding="utf-8")
-        assert "VN_NEWS_SSH_INGRESS_CIDRS=0.0.0.0/0" in rendered
-        for key in keys:
-            assert f"{SECRET_ENV_VARS[key]}={secret_id(key)}" in rendered
 
 
 def test_every_role_secret_has_an_env_variable() -> None:

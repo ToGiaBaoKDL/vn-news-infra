@@ -10,8 +10,8 @@ install_root="/usr/local/lib/vn-news"
 
 # shellcheck source=scripts/lib/common.sh
 source "$shared_lib_dir/common.sh"
-# shellcheck source=scripts/host/firewall.sh
-source "$script_dir/firewall.sh"
+# shellcheck source=scripts/lib/firewall.sh
+source "$shared_lib_dir/firewall.sh"
 
 require_root
 require_role "$role" data control processing
@@ -32,9 +32,9 @@ configure_private_firewall() {
 install -d -m 0755 "$install_root/host" "$install_root/lib" "$install_root/recovery"
 install -m 0755 "$recovery_dir/export.sh" "$install_root/recovery/export.sh"
 install -m 0755 "$recovery_dir/verify.sh" "$install_root/recovery/verify.sh"
-install -m 0644 "$script_dir/firewall.sh" "$install_root/host/firewall.sh"
 install -m 0755 "$script_dir/publish_metrics.sh" "$install_root/host/publish_metrics.sh"
 install -m 0644 "$shared_lib_dir/common.sh" "$install_root/lib/common.sh"
+install -m 0644 "$shared_lib_dir/firewall.sh" "$install_root/lib/firewall.sh"
 install -m 0644 "$shared_lib_dir/oci.sh" "$install_root/lib/oci.sh"
 
 cat >/etc/systemd/system/vn-news-recovery-export@.service <<EOF

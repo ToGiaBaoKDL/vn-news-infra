@@ -47,14 +47,25 @@ upload() {
   echo "uploaded recovery object: $object_name"
 }
 
-export_release_identity() {
-  local artifact="$tmp_dir/release-identity-${timestamp}.txt"
+export_deployment_metadata() {
+  local source="/etc/vn-news/deployment.json"
+  local artifact="$tmp_dir/deployment-${role}-${timestamp}.json"
+  local exported_at
 
-  printf 'release_tag=%s\nimage_tag=%s\n' \
-    "${VN_NEWS_RELEASE_TAG:?VN_NEWS_RELEASE_TAG is required}" \
-    "${VN_NEWS_IMAGE_TAG:?VN_NEWS_IMAGE_TAG is required}" \
-    >"$artifact"
-  upload release-identity "$artifact"
+  if [[ -f "$source" ]]; then
+    cp "$source" "$artifact"
+  else
+    exported_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    {
+      printf '{\n'
+      printf '  "role": "%s",\n' "$role"
+      printf '  "image_tag": "%s",\n' "${VN_NEWS_IMAGE_TAG:?VN_NEWS_IMAGE_TAG is required}"
+      printf '  "exported_at": "%s",\n' "$exported_at"
+      printf '  "metadata_missing": true\n'
+      printf '}\n'
+    } >"$artifact"
+  fi
+  upload "deployment-metadata/$role" "$artifact"
 }
 
 export_data() {
@@ -86,7 +97,6 @@ export_data() {
 export_control() {
   local airflow_dump="$tmp_dir/airflow-${timestamp}.dump"
   local config_archive="$tmp_dir/config-${timestamp}.tar.gz"
-  local release_archive="$tmp_dir/release-manifests-${timestamp}.tar.gz"
 
   compose_for_role control "$env_file" "$infra_root" \
     exec -T airflow-db pg_dump \
@@ -96,20 +106,18 @@ export_control() {
     --no-owner \
     --no-privileges >"$airflow_dump"
   tar -C "$repos_root/vn-news-config" -czf "$config_archive" configs
-  tar -C "$repos_root/vn-news-cicd" -czf "$release_archive" releases
 
   upload airflow-db "$airflow_dump"
   upload config "$config_archive"
-  upload release-manifests "$release_archive"
 }
 
 case "$role" in
   data)
-    export_release_identity
+    export_deployment_metadata
     export_data
     ;;
   control)
-    export_release_identity
+    export_deployment_metadata
     export_control
     ;;
 esac

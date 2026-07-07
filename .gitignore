@@ -16,7 +16,6 @@ build/
 .env
 .env.local
 .resource-manager.env
-bootstrap/bootstrap.env
 env/*.env
 *.log
 
