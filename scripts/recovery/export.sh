@@ -59,7 +59,7 @@ export_deployment_metadata() {
     {
       printf '{\n'
       printf '  "role": "%s",\n' "$role"
-      printf '  "image_tag": "%s",\n' "${VN_NEWS_IMAGE_TAG:?VN_NEWS_IMAGE_TAG is required}"
+      printf '  "image_manifest": %s,\n' "${VN_NEWS_IMAGE_MANIFEST:?VN_NEWS_IMAGE_MANIFEST is required}"
       printf '  "exported_at": "%s",\n' "$exported_at"
       printf '  "metadata_missing": true\n'
       printf '}\n'

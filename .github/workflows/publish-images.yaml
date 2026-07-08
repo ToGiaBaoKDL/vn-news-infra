@@ -1,0 +1,79 @@
+name: Publish Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-images.yaml"
+      - "airflow/runtime/**"
+      - "images.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out infra
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          path: vn-news-infra
+
+      - name: Check out platform library
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          repository: ${{ github.repository_owner }}/vn-news-platform-lib
+          token: ${{ secrets.WORKSPACE_READ_TOKEN || github.token }}
+          ref: main
+          path: vn-news-platform-lib
+
+      - name: Check out CI/CD tooling
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          repository: ${{ github.repository_owner }}/vn-news-cicd
+          token: ${{ secrets.WORKSPACE_READ_TOKEN || github.token }}
+          ref: main
+          path: vn-news-cicd
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.17"
+          python-version: "3.12"
+          working-directory: vn-news-cicd
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Resolve image tag
+        id: image
+        working-directory: vn-news-infra
+        run: |
+          set -euo pipefail
+          infra_ref="$(git rev-parse --short=12 HEAD)"
+          echo "tag=sha-${infra_ref}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push images
+        working-directory: vn-news-cicd
+        env:
+          IMAGE_TAG: ${{ steps.image.outputs.tag }}
+          VN_NEWS_IMAGE_REGISTRY: docker.io
+          VN_NEWS_IMAGE_NAMESPACE: ${{ vars.VN_NEWS_IMAGE_NAMESPACE || secrets.DOCKERHUB_USERNAME }}
+        run: |
+          set -euo pipefail
+          : "${VN_NEWS_IMAGE_NAMESPACE:?Set VN_NEWS_IMAGE_NAMESPACE or DOCKERHUB_USERNAME}"
+          uv sync --frozen --no-dev
+          uv run --no-dev python -m scripts.images.build \
+            --catalog ../vn-news-infra/images.yaml \
+            --workspace-root .. \
+            --tag "$IMAGE_TAG" \
+            --push

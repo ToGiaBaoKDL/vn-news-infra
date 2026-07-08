@@ -1,0 +1,12 @@
+version: 1
+owner: vn-news-infra
+platforms:
+  - linux/amd64
+  - linux/arm64
+
+images:
+  infra_airflow_runtime:
+    image_repository: vn-news-airflow-runtime
+    build:
+      context: vn-news-infra/airflow/runtime
+      dockerfile: Dockerfile

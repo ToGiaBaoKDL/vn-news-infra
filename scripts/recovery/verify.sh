@@ -123,7 +123,7 @@ verify_deployment_metadata() {
 
   metadata="$(download_latest "deployment-metadata/$role")"
   grep -q "\"role\": \"$role\"" "$metadata"
-  grep -q '"image_tag":' "$metadata"
+  grep -q '"image_manifest":' "$metadata"
 }
 
 verify_data() {
