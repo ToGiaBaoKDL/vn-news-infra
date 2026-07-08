@@ -1,6 +1,6 @@
 services:
   seaweedfs-s3:
-    image: ${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.29}
+    image: chrislusf/seaweedfs@sha256:d47c7ee99fcb951351d7194915f4e3a5ea604a8e8871183d713907dec4fb9bf5
     restart: unless-stopped
     command: server -s3 -s3.config=/run/secrets/seaweedfs-s3-config -dir=/data
     ports:

@@ -1,6 +1,6 @@
 services:
   spark-worker:
-    image: ${VN_NEWS_SPARK_IMAGE:?set VN_NEWS_SPARK_IMAGE}
+    image: apache/spark@sha256:7f44fcdd38baa7bb6fdf97f84bc12d282655d8258001a9f60287a70fb9e5033e
     restart: unless-stopped
     init: true
     network_mode: host

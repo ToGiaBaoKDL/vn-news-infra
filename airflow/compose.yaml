@@ -67,7 +67,7 @@ x-airflow-bootstrap-secrets: &airflow-bootstrap-secrets
 
 services:
   airflow-db:
-    image: ${AIRFLOW_DB_IMAGE:-postgres:16.9}
+    image: postgres@sha256:ddfe3e8713e3ee5b8f286082cb12512488dfbf3f5a1ecb0b74a42e6055af0a5f
     restart: unless-stopped
     environment:
       POSTGRES_DB: airflow
@@ -112,7 +112,7 @@ services:
     secrets: *airflow-bootstrap-secrets
 
   docker-socket-proxy:
-    image: ${DOCKER_SOCKET_PROXY_IMAGE:-tecnativa/docker-socket-proxy:v0.4.2}
+    image: tecnativa/docker-socket-proxy@sha256:1f3a6f303320723d199d2316a3e82b2e2685d86c275d5e3deeaf182573b47476
     restart: unless-stopped
     environment:
       CONTAINERS: "1"

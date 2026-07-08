@@ -138,7 +138,7 @@ verify_data() {
   grep -q './topics.txt' "$listing"
   verify_postgres_dump \
     "$polaris_dump" \
-    "${POLARIS_DB_IMAGE:-postgres:18.3}" \
+    "postgres@sha256:7e32e9833a6fb1c92c32552794cb6ed569d51b445a54907d35fc112ef39684db" \
     "${VN_NEWS_POLARIS_DB_NAME:-POLARIS}" \
     "${VN_NEWS_POLARIS_DB_USER:-polaris}" \
     polaris
@@ -155,7 +155,7 @@ verify_control() {
 
   verify_postgres_dump \
     "$airflow_dump" \
-    "${AIRFLOW_DB_IMAGE:-postgres:16.9}" \
+    "postgres@sha256:ddfe3e8713e3ee5b8f286082cb12512488dfbf3f5a1ecb0b74a42e6055af0a5f" \
     airflow \
     airflow \
     airflow
