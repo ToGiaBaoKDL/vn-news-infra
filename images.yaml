@@ -4,9 +4,15 @@ platforms:
   - linux/amd64
   - linux/arm64
 
+change_paths:
+  - .github/workflows/publish-images.yaml
+  - images.yaml
+
 images:
   infra_airflow_runtime:
     image_repository: vn-news-airflow-runtime
+    change_paths:
+      - airflow/runtime/**
     build:
       context: vn-news-infra/airflow/runtime
       dockerfile: Dockerfile
