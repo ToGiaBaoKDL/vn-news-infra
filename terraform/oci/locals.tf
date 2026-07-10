@@ -20,9 +20,7 @@ locals {
   recovery_daily_retention_days = 14
   metric_namespace              = "vn_news"
   data_volume_alarm_percent     = 70
-  pipeline_lag_alarm_threshold  = 100
   object_storage_service        = "objectstorage-${var.region}"
-  pipeline_consumer_groups      = toset(["article_fetcher", "article_extractor"])
 
   backup_schedules = {
     data = {

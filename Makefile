@@ -70,7 +70,7 @@ provision-runtime-secrets:
 sync-cloudflare-secrets:
 	uv run python -m scripts.secrets.sync_cloudflare --oci-tfvars $(TFVARS) $(SYNC_CLOUDFLARE_ARGS)
 
-# Processing node: ingestion consumers, metrics, and Spark worker
+# Processing node: ingestion consumers and Spark worker
 pull-processing:
 	$(PROCESSING_COMPOSE) pull
 up-processing:

@@ -68,11 +68,11 @@ resource "oci_identity_policy" "object_lifecycle_service_access" {
 }
 
 resource "oci_identity_policy" "metric_publish" {
-  for_each = toset(["data", "processing"])
+  for_each = toset(["data"])
 
   compartment_id = var.tenancy_ocid
   name           = "${local.resource_prefix}-${each.key}-metric-publish"
-  description    = "Allow ${each.key} node to publish VN News custom metrics."
+  description    = "Allow data node to publish VN News data-volume capacity metrics."
   freeform_tags  = merge(local.common_tags, { role = each.key })
 
   statements = [

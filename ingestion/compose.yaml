@@ -34,22 +34,6 @@ services:
       retries: 3
       start_period: 30s
 
-  pipeline-metrics:
-    image: ${VN_NEWS_PIPELINE_METRICS_IMAGE:?set VN_NEWS_PIPELINE_METRICS_IMAGE}
-    restart: unless-stopped
-    environment:
-      VN_NEWS_CONFIG_DIR: /app/configs
-      VN_NEWS_REDPANDA_BOOTSTRAP_SERVERS: ${VN_NEWS_REDPANDA_BOOTSTRAP_SERVERS:?set VN_NEWS_REDPANDA_BOOTSTRAP_SERVERS}
-      VN_NEWS_SCHEMA_REGISTRY_URL: ${VN_NEWS_SCHEMA_REGISTRY_URL:?set VN_NEWS_SCHEMA_REGISTRY_URL}
-    volumes:
-      - ${VN_NEWS_CONFIG_HOST_DIR:?set VN_NEWS_CONFIG_HOST_DIR}:/app/configs:ro
-    healthcheck:
-      test: ["CMD", "python", "-m", "news_service_common.health", "--checks", "event_bus,schema_registry"]
-      interval: 30s
-      timeout: 15s
-      retries: 3
-      start_period: 30s
-
 secrets:
   ingestion-s3-credentials:
     file: ${VN_NEWS_SECRETS_HOST_DIR:-/run/vn-news/secrets}/ingestion-s3-credentials
